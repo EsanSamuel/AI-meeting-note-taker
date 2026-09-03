@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	"example.com/internal/dialization"
+	"example.com/internal/diarization"
 	"example.com/internal/services"
 	"github.com/gin-gonic/gin"
 )
@@ -60,27 +60,26 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 
 	fmt.Printf("CONVERTED TRANSCRIPTION: %v", transcription_struct.Transcription)
 
-	dialization_segments, err := dialization.RunDialization(audio.Path)
+	diarization_segments, err := diarization.RunDiarization(audio.Path)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}
 
-	fmt.Printf("DIALIZATION SEGMENTS: %v", dialization_segments)
+	fmt.Printf("DIARIZATION SEGMENTS: %v", diarization_segments)
 
-	merged_segments, err := handler.transcription.MergeTranscriptionWithDialization(transcription_struct, dialization_segments)
+	merged_segments, err := handler.transcription.MergeTranscriptionWithDiarization(transcription_struct, diarization_segments)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"id":       recording.ID,
-		"filename": recording.Filename,
-		"size":     recording.Size,
-		//"transcript":         text,
+		"id":                   recording.ID,
+		"filename":             recording.Filename,
+		"size":                 recording.Size,
 		"whisper_transcript":   whisper_json,
-		"dialization_segments": dialization_segments,
+		"diarization_segments": diarization_segments,
 		"merged_segments":      merged_segments,
 	})
 }

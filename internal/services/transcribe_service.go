@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"example.com/internal/dialization"
+	"example.com/internal/diarization"
 )
 
 type WhisperOutput struct {
@@ -63,7 +63,7 @@ type Offsets struct {
 	To   int64 `json:"to"`
 }
 
-type DializationSegment struct {
+type DiarizationSegment struct {
 	Start   float64 `json:"start"`
 	End     float64 `json:"end"`
 	Speaker string  `json:"speaker"`
@@ -79,7 +79,7 @@ type MergedSegment struct {
 type TranscribeService interface {
 	ConvertTranscribedJsonToStruct(jsonData []byte) (*WhisperOutput, error)
 	TranscribeWAV(audioPath, audioID, modelPath string) (string, error)
-	MergeTranscriptionWithDialization(transcription *WhisperOutput, dializationSegments []dialization.Segment) ([]MergedSegment, error)
+	MergeTranscriptionWithDiarization(transcription *WhisperOutput, diarizationSegments []diarization.Segment) ([]MergedSegment, error)
 }
 
 type transcribeService struct{}
@@ -125,14 +125,14 @@ func overlap(start1, end1, start2, end2 float64) float64 {
 	return o
 }
 
-func (s *transcribeService) MergeTranscriptionWithDialization(transcription *WhisperOutput, dializationSegments []dialization.Segment) ([]MergedSegment, error) {
+func (s *transcribeService) MergeTranscriptionWithDiarization(transcription *WhisperOutput, diarizationSegments []diarization.Segment) ([]MergedSegment, error) {
 	merged := make([]MergedSegment, 0, len(transcription.Transcription))
 
 	for _, w := range transcription.Transcription {
 		bestSpeaker := "unknown"
 		bestOverlap := 0.0
 
-		for _, d := range dializationSegments {
+		for _, d := range diarizationSegments {
 			// Whisper offsets are milliseconds; diarization segments are seconds.
 			o := overlap(float64(w.Offsets.From)/1000, float64(w.Offsets.To)/1000, d.Start, d.End)
 			if o > bestOverlap {
