@@ -79,7 +79,7 @@ type MergedSegment struct {
 type TranscribeService interface {
 	ConvertTranscribedJsonToStruct(jsonData []byte) (*WhisperOutput, error)
 	TranscribeWAV(audioPath, audioID, modelPath string) (string, error)
-	MergeTranscriptionWithDiarization(transcription *WhisperOutput, diarizationSegments []diarization.Segment) ([]MergedSegment, error)
+	MergeTranscriptionWithDiarization(transcription *WhisperOutput, diarizationSegments []diarization.Segment, audioID string) ([]MergedSegment, error)
 }
 
 type transcribeService struct{}
@@ -125,7 +125,7 @@ func overlap(start1, end1, start2, end2 float64) float64 {
 	return o
 }
 
-func (s *transcribeService) MergeTranscriptionWithDiarization(transcription *WhisperOutput, diarizationSegments []diarization.Segment) ([]MergedSegment, error) {
+func (s *transcribeService) MergeTranscriptionWithDiarization(transcription *WhisperOutput, diarizationSegments []diarization.Segment, audioID string) ([]MergedSegment, error) {
 	merged := make([]MergedSegment, 0, len(transcription.Transcription))
 
 	for _, w := range transcription.Transcription {
@@ -147,5 +147,19 @@ func (s *transcribeService) MergeTranscriptionWithDiarization(transcription *Whi
 			Text:    w.Text,
 		})
 	}
+
+	transcriptFolder := "transcripts"
+	if _, err := os.Stat(transcriptFolder); os.IsNotExist(err) {
+		if err := os.Mkdir(transcriptFolder, 0755); err != nil {
+			return nil, fmt.Errorf("failed to create transcript folder: %v", err)
+		}
+	}
+
+	transcriptPath := filepath.Join(transcriptFolder, fmt.Sprintf("%s_transcript.json", audioID))
+	err := os.WriteFile(transcriptPath, []byte(fmt.Sprintf("%+v", merged)), 0644)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create transcript file: %v", err)
+	}
+
 	return merged, nil
 }

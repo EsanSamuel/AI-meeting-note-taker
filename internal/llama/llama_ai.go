@@ -20,8 +20,7 @@ func SummarizeText(prompt string) (string, error) {
 		"-st",
 	)
 
-	var stderr bytes.Buffer
-	var stdout bytes.Buffer
+	var stderr,stdout bytes.Buffer
 	cmd.Stderr = &stderr
 	cmd.Stdout = &stdout
 

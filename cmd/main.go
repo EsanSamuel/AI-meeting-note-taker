@@ -1,13 +1,13 @@
 package main
 
 import (
-	"fmt"
+	//"fmt"
 	"os"
 	"strconv"
 	"time"
 
 	"example.com/internal/handlers"
-	"example.com/internal/llama"
+	//"example.com/internal/llama"
 	"example.com/internal/router"
 	"example.com/internal/services"
 	"github.com/joho/godotenv"
@@ -29,14 +29,14 @@ func main() {
 		}
 	}
 
-	go func() {
+	/*go func() {
 		message, err := llama.SummarizeText("Hello, can you provide a brief summary of the current state of AI research and its potential future applications?")
 		if err != nil {
 			fmt.Printf("Error summarizing text: %v\n", err)
 			return
 		}
 		fmt.Printf("LLaMA Summary: %s\n", message)
-	}()
+	}()*/
 
 	fileService := services.NewFileService(storageDir, maxSize)
 	audioService := services.NewAudioService("", 5*time.Minute)

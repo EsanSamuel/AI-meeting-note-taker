@@ -73,9 +73,9 @@ func (s *audioService) ExtractAudio(ctx context.Context, input string) (*AudioRe
 		return nil, fmt.Errorf("failed to read extracted audio: %w", err)
 	}
 
-	if err := os.WriteFile(audioPath, data, 0o644); err != nil {
+	/*if err := os.WriteFile(audioPath, data, 0o644); err != nil {
 		return nil, fmt.Errorf("failed to save extracted audio: %w", err)
-	}
+	}*/
 
 	return &AudioResult{
 		ID:         id,

@@ -68,7 +68,7 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 
 	fmt.Printf("DIARIZATION SEGMENTS: %v", diarization_segments)
 
-	merged_segments, err := handler.transcription.MergeTranscriptionWithDiarization(transcription_struct, diarization_segments)
+	merged_segments, err := handler.transcription.MergeTranscriptionWithDiarization(transcription_struct, diarization_segments, audio.ID)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
