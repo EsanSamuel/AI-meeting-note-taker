@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"example.com/internal/handlers"
-	//"example.com/internal/llama"
+	"example.com/internal/llama"
 	"example.com/internal/router"
 	"example.com/internal/services"
 	"github.com/joho/godotenv"
@@ -40,7 +40,8 @@ func main() {
 
 	fileService := services.NewFileService(storageDir, maxSize)
 	audioService := services.NewAudioService("", 5*time.Minute)
-	transcribeService := services.NewTranscribeService()
+	llamaService := llama.NewLlamaService()
+	transcribeService := services.NewTranscribeService(llamaService)
 	recordingHandler := handlers.NewRecordingHandler(fileService, audioService, transcribeService)
 
 	segments := []services.MergedSegment{
@@ -57,12 +58,8 @@ func main() {
 		println("Chunk", i+1)
 		println("Start:", chunk.Start)
 		println("End:", chunk.End)
-		for _, segment := range chunk.Segments {
-			println("  Segment Start:", segment.Start)
-			println("  Segment End:", segment.End)
-			println("  Speaker:", segment.Speaker)
-			println("  Text:", segment.Text)
-		}
+		println("Formatted Chunk:")
+		println(services.FormatChunk(chunk))
 	}
 
 	if err := router.New(recordingHandler).Run(":8080"); err != nil {

@@ -7,7 +7,18 @@ import (
 	"path/filepath"
 )
 
-func SummarizeText(prompt string) (string, error) {
+type LlamaService interface {
+	SummarizeText(prompt string) (string, error)
+}
+
+type llamaService struct {
+}
+
+func NewLlamaService() LlamaService {
+	return &llamaService{}
+}
+
+func (s *llamaService) SummarizeText(prompt string) (string, error) {
 	llamaPath := filepath.Join("llama", "llama.cpp", "build", "bin", "llama-cli.exe")
 	modelPath := filepath.Join("llama", "llama.cpp", "models", "qwen", "qwen2.5-1.5b-instruct-q4_k_m.gguf")
 	cmd := exec.Command(
@@ -20,7 +31,7 @@ func SummarizeText(prompt string) (string, error) {
 		"-st",
 	)
 
-	var stderr,stdout bytes.Buffer
+	var stderr, stdout bytes.Buffer
 	cmd.Stderr = &stderr
 	cmd.Stdout = &stdout
 
