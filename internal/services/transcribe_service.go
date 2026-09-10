@@ -76,10 +76,17 @@ type MergedSegment struct {
 	Text    string  `json:"text"`
 }
 
+type TranscriptChunk struct {
+	Segments []MergedSegment
+	Start    float64
+	End      float64
+}
+
 type TranscribeService interface {
 	ConvertTranscribedJsonToStruct(jsonData []byte) (*WhisperOutput, error)
 	TranscribeWAV(audioPath, audioID, modelPath string) (string, error)
 	MergeTranscriptionWithDiarization(transcription *WhisperOutput, diarizationSegments []diarization.Segment, audioID string) ([]MergedSegment, error)
+	ChunkTranscript(transcripts []MergedSegment, maxDuration float64) []TranscriptChunk
 }
 
 type transcribeService struct{}
@@ -162,4 +169,37 @@ func (s *transcribeService) MergeTranscriptionWithDiarization(transcription *Whi
 	}
 
 	return merged, nil
+}
+
+func (s *transcribeService) ChunkTranscript(segments []MergedSegment, maxDuration float64) []TranscriptChunk {
+	var chunks []TranscriptChunk
+
+	if len(segments) == 0 {
+		return chunks
+	}
+
+	current := TranscriptChunk{
+		Start: segments[0].Start,
+	}
+
+	for _, segment := range segments {
+		duration := segment.End - current.Start
+
+		if len(current.Segments) > 0 && duration > maxDuration {
+			current.End = current.Segments[len(current.Segments)-1].End
+			chunks = append(chunks, current)
+
+			current = TranscriptChunk{
+				Start: segment.Start,
+			}
+		}
+
+		current.Segments = append(current.Segments, segment)
+	}
+
+	if len(current.Segments) > 0 {
+		current.End = current.Segments[len(current.Segments)-1].End
+		chunks = append(chunks, current)
+	}
+	return chunks
 }
