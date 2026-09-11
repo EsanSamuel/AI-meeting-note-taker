@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"example.com/internal/diarization"
 	"example.com/internal/services"
@@ -44,6 +45,7 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 		return
 	}
 
+	duration := time.Now()
 	whisper_json, err := handler.transcription.TranscribeWAV(audio.Path, audio.ID, "whisper/whisper.cpp/ggml-tiny.en.bin")
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
@@ -51,6 +53,7 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 	}
 
 	fmt.Printf("WHISPER TRANSCRIPTION: %s", whisper_json)
+	fmt.Printf("TRANSCRIPTION TIME: %f seconds", time.Since(duration).Seconds())
 
 	transcription_struct, err := handler.transcription.ConvertTranscribedJsonToStruct([]byte(whisper_json))
 	if err != nil {
@@ -72,6 +75,27 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
+	}
+
+	chunks := handler.transcription.ChunkTranscript(merged_segments, 15.0)
+	for i, chunk := range chunks {
+		println("Chunk", i+1)
+		println("Start:", chunk.Start)
+		println("End:", chunk.End)
+		println("Formatted Chunk:")
+		println(services.FormatChunk(chunk))
+	}
+
+	summarizationResult, err := handler.transcription.SummarizeTranscripts(chunks, audio.ID)
+	if err != nil {
+		println("Error summarizing transcript:", err.Error())
+	}
+
+	for i, analysis := range summarizationResult {
+		println("Summary for Chunk", i+1)
+		println("Summary:", analysis.Summary)
+		println("Action Items:", analysis.ActionItems)
+		println("Decisions:", analysis.Decisions)
 	}
 
 	c.JSON(http.StatusCreated, gin.H{

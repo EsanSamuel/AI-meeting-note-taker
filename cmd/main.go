@@ -44,7 +44,7 @@ func main() {
 	transcribeService := services.NewTranscribeService(llamaService)
 	recordingHandler := handlers.NewRecordingHandler(fileService, audioService, transcribeService)
 
-	segments := []services.MergedSegment{
+	/*segments := []services.MergedSegment{
 		{Start: 0, End: 1.72, Speaker: "SPEAKER_01", Text: "Hi, how are you?"},
 		{Start: 4.3, End: 6.7, Speaker: "SPEAKER_00", Text: "I'm good, thank you, and you."},
 		{Start: 8, End: 10.5, Speaker: "SPEAKER_01", Text: "I'm fine, what are you doing here?"},
@@ -61,6 +61,18 @@ func main() {
 		println("Formatted Chunk:")
 		println(services.FormatChunk(chunk))
 	}
+
+	summarizationResult, err := transcribeService.SummarizeTranscripts(chunks)
+	if err != nil {
+		println("Error summarizing transcript:", err.Error())
+	}
+
+	for i, analysis := range summarizationResult {
+		println("Summary for Chunk", i+1)
+		println("Summary:", analysis.Summary)
+		println("Action Items:", analysis.ActionItems)
+		println("Decisions:", analysis.Decisions)
+	}*/
 
 	if err := router.New(recordingHandler).Run(":8080"); err != nil {
 		panic(err)

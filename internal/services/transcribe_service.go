@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"example.com/internal/config"
 	"example.com/internal/diarization"
 	"example.com/internal/llama"
 )
@@ -84,12 +85,35 @@ type TranscriptChunk struct {
 	End      float64
 }
 
+type SummarizationResult struct {
+	Summary string
+	Index   int
+	Err     error
+}
+
+type MeetingAnalysis struct {
+	Summary     string       `json:"summary"`
+	Decisions   []Decision   `json:"decisions"`
+	ActionItems []ActionItem `json:"action_items"`
+}
+
+type Decision struct {
+	Text      string  `json:"text"`
+	Timestamp float64 `json:"timestamp"`
+}
+
+type ActionItem struct {
+	Task      string  `json:"task"`
+	Assignee  *string `json:"assignee"`
+	Timestamp float64 `json:"timestamp"`
+}
+
 type TranscribeService interface {
 	ConvertTranscribedJsonToStruct(jsonData []byte) (*WhisperOutput, error)
 	TranscribeWAV(audioPath, audioID, modelPath string) (string, error)
 	MergeTranscriptionWithDiarization(transcription *WhisperOutput, diarizationSegments []diarization.Segment, audioID string) ([]MergedSegment, error)
 	ChunkTranscript(transcripts []MergedSegment, maxDuration float64) []TranscriptChunk
-	SummarizeTranscripts(transcriptChunks []TranscriptChunk) ([]string, error)
+	SummarizeTranscripts(transcriptChunks []TranscriptChunk, audioID string) ([]MeetingAnalysis, error)
 }
 
 type transcribeService struct {
@@ -170,8 +194,13 @@ func (s *transcribeService) MergeTranscriptionWithDiarization(transcription *Whi
 		}
 	}
 
+	serilaizedMerged, err := json.MarshalIndent(merged, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize merged segments: %v", err)
+	}
+
 	transcriptPath := filepath.Join(transcriptFolder, fmt.Sprintf("%s_transcript.json", audioID))
-	err := os.WriteFile(transcriptPath, []byte(fmt.Sprintf("%+v", merged)), 0644)
+	err = os.WriteFile(transcriptPath, serilaizedMerged, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create transcript file: %v", err)
 	}
@@ -234,22 +263,22 @@ func FormatChunk(chunk TranscriptChunk) string {
 	return b.String()
 }
 
-type SummarizationResult struct {
-	Summary string
-	Index   string
-	Err     error
-}
-
-func (s *transcribeService) SummarizeTranscripts(transcriptChunks []TranscriptChunk) ([]string, error) {
+func (s *transcribeService) SummarizeTranscripts(transcriptChunks []TranscriptChunk, audioID string) ([]MeetingAnalysis, error) {
 	if len(transcriptChunks) == 0 {
-		return nil, fmt.Errorf("no transcript chunks provided for summarization")
+		return []MeetingAnalysis{}, fmt.Errorf("no transcript chunks provided for summarization")
 	}
 
-	summarizedTranscripts := make([]string, 0, len(transcriptChunks))
+	summarizedTranscripts := make([]string, len(transcriptChunks))
 	results := make(chan SummarizationResult, len(transcriptChunks))
 
 	for i, chunk := range transcriptChunks {
-		fmt.Printf("Chunk from %.2f to %.2f with %d segments\n", i, chunk.Start, chunk.End, len(chunk.Segments))
+		fmt.Printf(
+			"Processing chunk %d: %.2f to %.2f with %d segments\n",
+			i+1,
+			chunk.Start,
+			chunk.End,
+			len(chunk.Segments),
+		)
 
 		formattedChunks := FormatChunk(chunk)
 		prompt := fmt.Sprintf(`You are a meeting analysis assistant.
@@ -261,12 +290,16 @@ Your response MUST be valid JSON and MUST follow this exact structure:
 {
   "summary": "A concise summary of the discussion.",
   "decisions": [
-    "A decision that was explicitly made during the meeting."
+    {
+      "text": "A decision that was explicitly made during the meeting.",
+      "timestamp": 42.5
+    }
   ],
   "action_items": [
     {
       "task": "The task that needs to be completed.",
-      "assignee": "The speaker responsible for completing the task."
+      "assignee": "The speaker responsible for completing the task.",
+      "timestamp": 67.2
     }
   ]
 }
@@ -284,18 +317,23 @@ Rules:
 9. If there are no action items, return an empty array.
 10. Preserve the speaker identifiers exactly as they appear in the transcript.
 11. Do not invent information that is not present in the transcript.
+12. For every decision, use the timestamp of the transcript segment where the decision was made.
+13. For every action item, use the timestamp of the transcript segment where the task was assigned or agreed upon.
+14. Timestamps must be returned in seconds as a number.
+15. Do not create timestamps that are not present in the transcript.
 
 Transcript: %v`, formattedChunks)
 
 		go func(index int, prompt string) {
-			summarizedTranscript, err := s.llama.SummarizeText(prompt)
+			//summarizedTranscript, err := s.llama.SummarizeText(prompt)
+			summarizedTranscript, err := config.Ai(prompt)
 			if err != nil {
 				fmt.Printf("Error summarizing transcript chunk: %v\n", err)
-				results <- SummarizationResult{Index: fmt.Sprintf("Chunk %d", index), Err: err}
+				results <- SummarizationResult{Index: index, Err: err}
 				return
 			}
 			fmt.Println(summarizedTranscript)
-			results <- SummarizationResult{Index: fmt.Sprintf("Chunk %d", index), Summary: summarizedTranscript}
+			results <- SummarizationResult{Index: index, Summary: summarizedTranscript}
 		}(i, prompt)
 	}
 
@@ -314,5 +352,31 @@ Transcript: %v`, formattedChunks)
 		summarizedTranscripts[result.Index] = result.Summary
 	}
 
-	return summarizedTranscripts, nil
+	var analyses []MeetingAnalysis
+
+	for _, summary := range summarizedTranscripts {
+		var summaryStruct MeetingAnalysis
+		err := json.Unmarshal([]byte(summary), &summaryStruct)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal meeting analysis: %w", err)
+		}
+		analyses = append(analyses, summaryStruct)
+	}
+
+	if err := os.MkdirAll("summaries", 0755); err != nil {
+		return nil, fmt.Errorf("failed to create summaries directory: %w", err)
+	}
+
+	filename := fmt.Sprintf("%s_meeting_analysis.json", audioID)
+	summaryPath := filepath.Join("summaries", filename)
+	summaryData, err := json.MarshalIndent(analyses, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal meeting analysis: %w", err)
+	}
+
+	if err := os.WriteFile(summaryPath, summaryData, 0644); err != nil {
+		return nil, fmt.Errorf("failed to write meeting analysis file: %w", err)
+	}
+
+	return analyses, nil
 }
