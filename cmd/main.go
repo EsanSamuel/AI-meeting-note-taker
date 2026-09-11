@@ -1,22 +1,26 @@
 package main
 
 import (
-	//"fmt"
+	"fmt"
 	"os"
 	"strconv"
 	"time"
 
+	"example.com/internal/config"
 	"example.com/internal/handlers"
 	"example.com/internal/llama"
 	"example.com/internal/router"
 	"example.com/internal/services"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	if err := godotenv.Load(); err != nil {
+	cfg, err := config.LoadConfig()
+	if err != nil {
 		panic(err)
 	}
+	s := cfg.Server
+	serverAddr := fmt.Sprintf(":%s", s.Port)
+
 	storageDir := os.Getenv("RECORDINGS_DIR")
 	if storageDir == "" {
 		storageDir = "./recordings"
@@ -29,52 +33,13 @@ func main() {
 		}
 	}
 
-	/*go func() {
-		message, err := llama.SummarizeText("Hello, can you provide a brief summary of the current state of AI research and its potential future applications?")
-		if err != nil {
-			fmt.Printf("Error summarizing text: %v\n", err)
-			return
-		}
-		fmt.Printf("LLaMA Summary: %s\n", message)
-	}()*/
-
 	fileService := services.NewFileService(storageDir, maxSize)
 	audioService := services.NewAudioService("", 5*time.Minute)
 	llamaService := llama.NewLlamaService()
 	transcribeService := services.NewTranscribeService(llamaService)
 	recordingHandler := handlers.NewRecordingHandler(fileService, audioService, transcribeService)
 
-	/*segments := []services.MergedSegment{
-		{Start: 0, End: 1.72, Speaker: "SPEAKER_01", Text: "Hi, how are you?"},
-		{Start: 4.3, End: 6.7, Speaker: "SPEAKER_00", Text: "I'm good, thank you, and you."},
-		{Start: 8, End: 10.5, Speaker: "SPEAKER_01", Text: "I'm fine, what are you doing here?"},
-		{Start: 11.8, End: 14.8, Speaker: "SPEAKER_00", Text: "I'm just taking a walk. The weather is nice today."},
-		{Start: 16.7, End: 19.8, Speaker: "SPEAKER_01", Text: "Yes, it is. Want to join me for coffee?"},
-		{Start: 21.9, End: 23.7, Speaker: "SPEAKER_00", Text: "Great idea, let's go."},
-	}
-
-	chunks := transcribeService.ChunkTranscript(segments, 15.0)
-	for i, chunk := range chunks {
-		println("Chunk", i+1)
-		println("Start:", chunk.Start)
-		println("End:", chunk.End)
-		println("Formatted Chunk:")
-		println(services.FormatChunk(chunk))
-	}
-
-	summarizationResult, err := transcribeService.SummarizeTranscripts(chunks)
-	if err != nil {
-		println("Error summarizing transcript:", err.Error())
-	}
-
-	for i, analysis := range summarizationResult {
-		println("Summary for Chunk", i+1)
-		println("Summary:", analysis.Summary)
-		println("Action Items:", analysis.ActionItems)
-		println("Decisions:", analysis.Decisions)
-	}*/
-
-	if err := router.New(recordingHandler).Run(":8080"); err != nil {
+	if err := router.New(recordingHandler).Run(serverAddr); err != nil {
 		panic(err)
 	}
 }
