@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"example.com/internal/diarization"
+	"example.com/internal/inference"
 	"example.com/internal/services"
+	logClient "github.com/EsanSamuel/sensory/LogClient"
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,10 +21,19 @@ type RecordingHandler struct {
 	files         services.FileService
 	audio         services.AudioService
 	transcription services.TranscribeService
+	Logger        *logClient.Client
 }
 
-func NewRecordingHandler(files services.FileService, audio services.AudioService, transcription services.TranscribeService) *RecordingHandler {
-	return &RecordingHandler{files: files, audio: audio, transcription: transcription}
+type WhisperInferenceResult struct {
+	CPU            float64 `json:"cpu"`
+	RAM            uint64  `json:"ram"`
+	InferenceTime  float64 `json:"inference_time"`
+	RealTimeFactor float64 `json:"real_time_factor"`
+	AudioDuration  float64 `json:"audio_duration"`
+}
+
+func NewRecordingHandler(files services.FileService, audio services.AudioService, transcription services.TranscribeService, Logger *logClient.Client) *RecordingHandler {
+	return &RecordingHandler{files: files, audio: audio, transcription: transcription, Logger: Logger}
 }
 
 func (handler *RecordingHandler) Create(c *gin.Context) {
@@ -55,7 +66,7 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 	fmt.Printf("WHISPER TRANSCRIPTION: %s", whisper_json)
 	fmt.Printf("TRANSCRIPTION TIME: %f seconds", time.Since(duration).Seconds())
 
-	transcription_struct, err := handler.transcription.ConvertTranscribedJsonToStruct([]byte(whisper_json))
+	transcription_struct, err := handler.transcription.ConvertTranscribedJsonToStruct([]byte(whisper_json.Result))
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
@@ -63,6 +74,7 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 
 	fmt.Printf("CONVERTED TRANSCRIPTION: %v", transcription_struct.Transcription)
 
+	diarization_duration := time.Now()
 	diarization_segments, err := diarization.RunDiarization(audio.Path)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
@@ -70,6 +82,7 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 	}
 
 	fmt.Printf("DIARIZATION SEGMENTS: %v", diarization_segments)
+	fmt.Printf("DIARIZATION TIME: %f seconds", time.Since(diarization_duration).Seconds())
 
 	merged_segments, err := handler.transcription.MergeTranscriptionWithDiarization(transcription_struct, diarization_segments, audio.ID)
 	if err != nil {
@@ -98,6 +111,26 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 		println("Decisions:", analysis.Decisions)
 	}
 
+	transcript_elapsed := time.Since(duration).Seconds()
+	//diarization_elasped := time.Since(diarization_duration).Seconds()
+	whisperInference, err := inference.CollectWhisperMetrics(whisper_json.Pid, time.Duration(transcript_elapsed), float64(audio.Duration))
+	whisperInferenceResult := whisperInference
+
+	if err != nil {
+		fmt.Printf("WHISPER INFERENCE METRICS ERROR: %v\n", err)
+	} else {
+
+		fmt.Printf("WHISPER INFERENCE METRICS:\n%+v\n", whisperInference)
+		handler.Logger.INFO(fmt.Sprintf(
+			"WHISPER INFERENCE METRICS | audio_duration=%.3f seconds | cpu=%.3f%% | ram=%d bytes | inference_time=%.3f seconds | real_time_factor=%.3f",
+			whisperInference.AudioDuration,
+			whisperInference.CPU,
+			whisperInference.RAM,
+			whisperInference.InferenceTime,
+			whisperInference.RealTimeFactor,
+		))
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
 		"id":                   recording.ID,
 		"filename":             recording.Filename,
@@ -105,5 +138,6 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 		"whisper_transcript":   whisper_json,
 		"diarization_segments": diarization_segments,
 		"merged_segments":      merged_segments,
+		"whisper_inference":    whisperInferenceResult,
 	})
 }

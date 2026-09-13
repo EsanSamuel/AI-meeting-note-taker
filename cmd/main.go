@@ -33,11 +33,13 @@ func main() {
 		}
 	}
 
+	LOGGER := config.InitLogger()
+
 	fileService := services.NewFileService(storageDir, maxSize)
 	audioService := services.NewAudioService("", 5*time.Minute)
 	llamaService := llama.NewLlamaService()
 	transcribeService := services.NewTranscribeService(llamaService)
-	recordingHandler := handlers.NewRecordingHandler(fileService, audioService, transcribeService)
+	recordingHandler := handlers.NewRecordingHandler(fileService, audioService, transcribeService, LOGGER)
 
 	if err := router.New(recordingHandler).Run(serverAddr); err != nil {
 		panic(err)

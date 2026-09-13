@@ -15,6 +15,11 @@ import (
 	"example.com/internal/llama"
 )
 
+type TranscriptionResult struct {
+	Result string
+	Pid    int
+}
+
 type WhisperOutput struct {
 	SystemInfo    string         `json:"systeminfo"`
 	Model         WhisperModel   `json:"model"`
@@ -110,7 +115,7 @@ type ActionItem struct {
 
 type TranscribeService interface {
 	ConvertTranscribedJsonToStruct(jsonData []byte) (*WhisperOutput, error)
-	TranscribeWAV(audioPath, audioID, modelPath string) (string, error)
+	TranscribeWAV(audioPath, audioID, modelPath string) (TranscriptionResult, error)
 	MergeTranscriptionWithDiarization(transcription *WhisperOutput, diarizationSegments []diarization.Segment, audioID string) ([]MergedSegment, error)
 	ChunkTranscript(transcripts []MergedSegment, maxDuration float64) []TranscriptChunk
 	SummarizeTranscripts(transcriptChunks []TranscriptChunk, audioID string) ([]MeetingAnalysis, error)
@@ -135,7 +140,7 @@ func (s *transcribeService) ConvertTranscribedJsonToStruct(jsonData []byte) (*Wh
 	return &output, nil
 }
 
-func (s *transcribeService) TranscribeWAV(audioPath, audioID, modelPath string) (string, error) {
+func (s *transcribeService) TranscribeWAV(audioPath, audioID, modelPath string) (TranscriptionResult, error) {
 	binPath := filepath.Join("whisper", "whisper.cpp", "build", "bin", "Release", "whisper-cli.exe")
 
 	cmd := exec.Command(binPath, "-m", modelPath, "-f", audioPath, "-oj")
@@ -144,15 +149,17 @@ func (s *transcribeService) TranscribeWAV(audioPath, audioID, modelPath string) 
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("whisper failed: %v: %s", err, stderr.String())
+		return TranscriptionResult{}, fmt.Errorf("whisper failed: %v: %s", err, stderr.String())
 	}
+
+	pid := cmd.Process.Pid
 
 	outputFilePath := audioPath + ".json"
 	data, err := os.ReadFile(outputFilePath)
 	if err != nil {
-		return "", fmt.Errorf("reading whisper output at %s (stderr: %s): %w", outputFilePath, stderr.String(), err)
+		return TranscriptionResult{}, fmt.Errorf("reading whisper output at %s (stderr: %s): %w", outputFilePath, stderr.String(), err)
 	}
-	return string(data), nil
+	return TranscriptionResult{Result: string(data), Pid: pid}, nil
 }
 
 func overlap(start1, end1, start2, end2 float64) float64 {
