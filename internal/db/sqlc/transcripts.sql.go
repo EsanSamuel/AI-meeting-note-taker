@@ -13,18 +13,26 @@ import (
 
 const createTranscriptSegment = `-- name: CreateTranscriptSegment :one
 INSERT INTO
-    transcript_segments (meeting_id, start_time, end_time, speaker, text)
+    transcript_segments (
+        meeting_id,
+        start_time,
+        end_time,
+        speaker,
+        speaker_id,
+        text
+    )
 VALUES
-    ($1, $2, $3, $4, $5)
+    ($1, $2, $3, $4, $5, $6)
 RETURNING
-    id, meeting_id, start_time, end_time, speaker, text, created_at
+    id, meeting_id, start_time, end_time, speaker_id, speaker, text, created_at
 `
 
 type CreateTranscriptSegmentParams struct {
 	MeetingID pgtype.UUID `json:"meeting_id"`
 	StartTime float64     `json:"start_time"`
 	EndTime   float64     `json:"end_time"`
-	Speaker   string      `json:"speaker"`
+	Speaker   pgtype.Text `json:"speaker"`
+	SpeakerID string      `json:"speaker_id"`
 	Text      string      `json:"text"`
 }
 
@@ -35,6 +43,7 @@ func (q *Queries) CreateTranscriptSegment(ctx context.Context, arg CreateTranscr
 		arg.StartTime,
 		arg.EndTime,
 		arg.Speaker,
+		arg.SpeakerID,
 		arg.Text,
 	)
 	var i TranscriptSegment
@@ -43,6 +52,7 @@ func (q *Queries) CreateTranscriptSegment(ctx context.Context, arg CreateTranscr
 		&i.MeetingID,
 		&i.StartTime,
 		&i.EndTime,
+		&i.SpeakerID,
 		&i.Speaker,
 		&i.Text,
 		&i.CreatedAt,
@@ -74,7 +84,7 @@ func (q *Queries) DeleteTranscriptSegmentsByMeeting(ctx context.Context, meeting
 
 const getTranscriptSegment = `-- name: GetTranscriptSegment :one
 SELECT
-    id, meeting_id, start_time, end_time, speaker, text, created_at
+    id, meeting_id, start_time, end_time, speaker_id, speaker, text, created_at
 FROM
     transcript_segments
 WHERE
@@ -91,6 +101,7 @@ func (q *Queries) GetTranscriptSegment(ctx context.Context, id pgtype.UUID) (Tra
 		&i.MeetingID,
 		&i.StartTime,
 		&i.EndTime,
+		&i.SpeakerID,
 		&i.Speaker,
 		&i.Text,
 		&i.CreatedAt,
@@ -100,7 +111,7 @@ func (q *Queries) GetTranscriptSegment(ctx context.Context, id pgtype.UUID) (Tra
 
 const listTranscriptSegments = `-- name: ListTranscriptSegments :many
 SELECT
-    id, meeting_id, start_time, end_time, speaker, text, created_at
+    id, meeting_id, start_time, end_time, speaker_id, speaker, text, created_at
 FROM
     transcript_segments
 WHERE
@@ -123,6 +134,7 @@ func (q *Queries) ListTranscriptSegments(ctx context.Context, meetingID pgtype.U
 			&i.MeetingID,
 			&i.StartTime,
 			&i.EndTime,
+			&i.SpeakerID,
 			&i.Speaker,
 			&i.Text,
 			&i.CreatedAt,
@@ -148,7 +160,7 @@ SET
 WHERE
     id = $1
 RETURNING
-    id, meeting_id, start_time, end_time, speaker, text, created_at
+    id, meeting_id, start_time, end_time, speaker_id, speaker, text, created_at
 `
 
 type UpdateTranscriptSegmentParams struct {
@@ -156,7 +168,7 @@ type UpdateTranscriptSegmentParams struct {
 	Text      string      `json:"text"`
 	StartTime float64     `json:"start_time"`
 	EndTime   float64     `json:"end_time"`
-	Speaker   string      `json:"speaker"`
+	Speaker   pgtype.Text `json:"speaker"`
 }
 
 func (q *Queries) UpdateTranscriptSegment(ctx context.Context, arg UpdateTranscriptSegmentParams) (TranscriptSegment, error) {
@@ -173,6 +185,7 @@ func (q *Queries) UpdateTranscriptSegment(ctx context.Context, arg UpdateTranscr
 		&i.MeetingID,
 		&i.StartTime,
 		&i.EndTime,
+		&i.SpeakerID,
 		&i.Speaker,
 		&i.Text,
 		&i.CreatedAt,

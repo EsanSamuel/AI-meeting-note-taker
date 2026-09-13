@@ -1,9 +1,16 @@
 -- db/queries/transcripts.sql
 -- name: CreateTranscriptSegment :one
 INSERT INTO
-    transcript_segments (meeting_id, start_time, end_time, speaker, text)
+    transcript_segments (
+        meeting_id,
+        start_time,
+        end_time,
+        speaker,
+        speaker_id,
+        text
+    )
 VALUES
-    ($1, $2, $3, $4, $5)
+    ($1, $2, $3, $4, $5, $6)
 RETURNING
     *;
 

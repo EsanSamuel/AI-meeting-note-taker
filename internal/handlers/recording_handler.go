@@ -13,10 +13,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-/*type AudioExtractor interface {
-	ExtractAudio(ctx context.Context, input string) (*services.AudioResult, error)
-}*/
-
 type RecordingHandler struct {
 	files         services.FileService
 	audio         services.AudioService
@@ -66,6 +62,25 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 	fmt.Printf("WHISPER TRANSCRIPTION: %s", whisper_json)
 	fmt.Printf("TRANSCRIPTION TIME: %f seconds", time.Since(duration).Seconds())
 
+	transcript_elapsed := time.Since(duration).Seconds()
+	whisperInference, err := inference.CollectWhisperMetrics(whisper_json.Pid, time.Duration(transcript_elapsed*float64(time.Second)), float64(audio.Duration))
+	whisperInferenceResult := whisperInference
+
+	if err != nil {
+		fmt.Printf("WHISPER INFERENCE METRICS ERROR: %v\n", err)
+	} else {
+
+		fmt.Printf("WHISPER INFERENCE METRICS:\n%+v\n", whisperInference)
+		handler.Logger.INFO(fmt.Sprintf(
+			"WHISPER INFERENCE METRICS | audio_duration=%.3f seconds | cpu=%.3f%% | ram=%d bytes | inference_time=%.3f seconds | real_time_factor=%.3f",
+			whisperInference.AudioDuration,
+			whisperInference.CPU,
+			whisperInference.RAM,
+			whisperInference.InferenceTime,
+			whisperInference.RealTimeFactor,
+		))
+	}
+
 	transcription_struct, err := handler.transcription.ConvertTranscribedJsonToStruct([]byte(whisper_json.Result))
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
@@ -109,26 +124,6 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 		println("Summary:", analysis.Summary)
 		println("Action Items:", analysis.ActionItems)
 		println("Decisions:", analysis.Decisions)
-	}
-
-	transcript_elapsed := time.Since(duration).Seconds()
-	//diarization_elasped := time.Since(diarization_duration).Seconds()
-	whisperInference, err := inference.CollectWhisperMetrics(whisper_json.Pid, time.Duration(transcript_elapsed), float64(audio.Duration))
-	whisperInferenceResult := whisperInference
-
-	if err != nil {
-		fmt.Printf("WHISPER INFERENCE METRICS ERROR: %v\n", err)
-	} else {
-
-		fmt.Printf("WHISPER INFERENCE METRICS:\n%+v\n", whisperInference)
-		handler.Logger.INFO(fmt.Sprintf(
-			"WHISPER INFERENCE METRICS | audio_duration=%.3f seconds | cpu=%.3f%% | ram=%d bytes | inference_time=%.3f seconds | real_time_factor=%.3f",
-			whisperInference.AudioDuration,
-			whisperInference.CPU,
-			whisperInference.RAM,
-			whisperInference.InferenceTime,
-			whisperInference.RealTimeFactor,
-		))
 	}
 
 	c.JSON(http.StatusCreated, gin.H{

@@ -43,7 +43,8 @@ type TranscriptSegment struct {
 	MeetingID pgtype.UUID        `json:"meeting_id"`
 	StartTime float64            `json:"start_time"`
 	EndTime   float64            `json:"end_time"`
-	Speaker   string             `json:"speaker"`
+	SpeakerID string             `json:"speaker_id"`
+	Speaker   pgtype.Text        `json:"speaker"`
 	Text      string             `json:"text"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }

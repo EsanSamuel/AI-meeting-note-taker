@@ -7,10 +7,13 @@ import (
 	"time"
 
 	"example.com/internal/config"
+	"example.com/internal/db"
 	"example.com/internal/handlers"
 	"example.com/internal/llama"
+	"example.com/internal/repository"
 	"example.com/internal/router"
 	"example.com/internal/services"
+	dbservices "example.com/internal/services/db"
 )
 
 func main() {
@@ -35,16 +38,33 @@ func main() {
 
 	LOGGER := config.InitLogger()
 
+	db, err := db.InitDatabase(&cfg.Database)
+	if err != nil {
+		fmt.Printf("error initializing database: %v\n", err)
+		return
+	}
+
+	// repositories
+	meetingRepository := repository.NewMeetingRepository(db)
+	transcriptRepository := repository.NewTranscriptRepository(db)
+
+	// services
 	fileService := services.NewFileService(storageDir, maxSize)
 	audioService := services.NewAudioService("", 5*time.Minute)
 	llamaService := llama.NewLlamaService()
 	transcribeService := services.NewTranscribeService(llamaService)
-	recordingHandler := handlers.NewRecordingHandler(fileService, audioService, transcribeService, LOGGER)
+	meetingService := dbservices.NewMeetingService(meetingRepository)
+	transcriptService := dbservices.NewTranscriptService(transcriptRepository)
 
-	if err := router.New(recordingHandler).Run(serverAddr); err != nil {
+	// handlers
+	recordingHandler := handlers.NewRecordingHandler(fileService, audioService, transcribeService, LOGGER)
+	meetingHandler := handlers.NewMeetingHandler(meetingService)
+	transcriptHandler := handlers.NewTranscriptHandler(transcriptService)
+
+	if err := router.New(recordingHandler, meetingHandler, transcriptHandler).Run(serverAddr); err != nil {
 		panic(err)
 	}
 }
 
-// Downloading model command = .\models\download-ggml-model.cmd base.en
+// Downloading whisper model command = .\models\download-ggml-model.cmd base.en
 // Build whisper command = "cmake -B build", "cmake --build build --config Release"

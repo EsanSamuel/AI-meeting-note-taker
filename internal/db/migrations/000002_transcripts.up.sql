@@ -5,7 +5,8 @@ CREATE TABLE
         meeting_id UUID NOT NULL REFERENCES meetings (id) ON DELETE CASCADE,
         start_time DOUBLE PRECISION NOT NULL,
         end_time DOUBLE PRECISION NOT NULL,
-        speaker TEXT NOT NULL,
+        speaker_id TEXT NOT NULL,
+        speaker TEXT,
         text TEXT NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
