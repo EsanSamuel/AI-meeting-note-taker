@@ -2,6 +2,7 @@
 -- name: CreateMeeting :one
 INSERT INTO
     meetings (
+        id,
         title,
         started_at,
         ended_at,
@@ -10,7 +11,7 @@ INSERT INTO
         video_path
     )
 VALUES
-    ($1, $2, $3, $4, $5, $6)
+    ($1, $2, $3, $4, $5, $6, $7)
 RETURNING
     *;
 

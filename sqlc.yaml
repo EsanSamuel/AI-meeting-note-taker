@@ -1,4 +1,5 @@
 version: "2"
+
 sql:
   - engine: "postgresql"
     queries: "internal/db/queries"
@@ -11,3 +12,9 @@ sql:
         emit_interface: true
         emit_empty_slices: true
         sql_package: "pgx/v5"
+
+        overrides:
+          - db_type: "vector"
+            go_type:
+              import: "github.com/pgvector/pgvector-go"
+              type: "Vector"

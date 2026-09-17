@@ -8,15 +8,20 @@ import (
 
 	"example.com/internal/diarization"
 	"example.com/internal/inference"
+	"example.com/internal/repository"
 	"example.com/internal/services"
+	dbservices "example.com/internal/services/db"
 	logClient "github.com/EsanSamuel/sensory/LogClient"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type RecordingHandler struct {
 	files         services.FileService
 	audio         services.AudioService
 	transcription services.TranscribeService
+	meetings      *dbservices.MeetingService
+	transcripts   *dbservices.TranscriptService
 	Logger        *logClient.Client
 }
 
@@ -28,8 +33,8 @@ type WhisperInferenceResult struct {
 	AudioDuration  float64 `json:"audio_duration"`
 }
 
-func NewRecordingHandler(files services.FileService, audio services.AudioService, transcription services.TranscribeService, Logger *logClient.Client) *RecordingHandler {
-	return &RecordingHandler{files: files, audio: audio, transcription: transcription, Logger: Logger}
+func NewRecordingHandler(files services.FileService, audio services.AudioService, transcription services.TranscribeService, meetings *dbservices.MeetingService, transcripts *dbservices.TranscriptService, Logger *logClient.Client) *RecordingHandler {
+	return &RecordingHandler{files: files, audio: audio, transcription: transcription, meetings: meetings, transcripts: transcripts, Logger: Logger}
 }
 
 func (handler *RecordingHandler) Create(c *gin.Context) {
@@ -49,6 +54,25 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 	audio, err := handler.audio.ExtractAudio(c.Request.Context(), recording.Path)
 	if err != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+		return
+	}
+
+	meetingID, err := uuid.Parse(audio.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("invalid audio meeting ID: %v", err)})
+		return
+	}
+	startedAt := time.Now()
+	meeting, err := handler.meetings.CreateMeeting(c.Request.Context(), repository.Meeting{
+		ID:              meetingID,
+		Title:           recording.Filename,
+		StartedAt:       startedAt,
+		EndedAt:         startedAt.Add(audio.Duration),
+		DurationSeconds: audio.Duration.Seconds(),
+		AudioPath:       audio.Path,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("creating meeting: %v", err)})
 		return
 	}
 
@@ -105,6 +129,20 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 		return
 	}
 
+	for _, segment := range merged_segments {
+		if _, err := handler.transcripts.CreateTranscriptSegment(c.Request.Context(), repository.TranscriptSegment{
+			MeetingID: meeting.ID,
+			StartTime: segment.Start,
+			EndTime:   segment.End,
+			SpeakerID: segment.Speaker,
+			Speaker:   segment.Speaker,
+			Text:      segment.Text,
+		}); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("saving transcript segment: %v", err)})
+			return
+		}
+	}
+
 	chunks := handler.transcription.ChunkTranscript(merged_segments, 15.0)
 	for i, chunk := range chunks {
 		println("Chunk", i+1)
@@ -116,7 +154,8 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 
 	summarizationResult, err := handler.transcription.SummarizeTranscripts(chunks, audio.ID)
 	if err != nil {
-		println("Error summarizing transcript:", err.Error())
+		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("summarizing transcript: %v", err)})
+		return
 	}
 
 	for i, analysis := range summarizationResult {
@@ -124,10 +163,38 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 		println("Summary:", analysis.Summary)
 		println("Action Items:", analysis.ActionItems)
 		println("Decisions:", analysis.Decisions)
+
+		for _, decision := range analysis.Decisions {
+			if _, err := handler.meetings.CreateMeetingDecision(c.Request.Context(), repository.MeetingDecision{
+				MeetingID:        meeting.ID,
+				Decision:         decision.Text,
+				TimestampSeconds: decision.Timestamp,
+			}); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("saving meeting decision: %v", err)})
+				return
+			}
+		}
+
+		for _, actionItem := range analysis.ActionItems {
+			assignee := ""
+			if actionItem.Assignee != nil {
+				assignee = *actionItem.Assignee
+			}
+			if _, err := handler.meetings.CreateMeetingActionItem(c.Request.Context(), repository.MeetingActionItem{
+				MeetingID:        meeting.ID,
+				Task:             actionItem.Task,
+				Assignee:         assignee,
+				TimestampSeconds: actionItem.Timestamp,
+			}); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("saving meeting action item: %v", err)})
+				return
+			}
+		}
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
 		"id":                   recording.ID,
+		"meeting_id":           meeting.ID,
 		"filename":             recording.Filename,
 		"size":                 recording.Size,
 		"whisper_transcript":   whisper_json,

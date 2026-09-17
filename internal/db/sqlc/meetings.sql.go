@@ -14,6 +14,7 @@ import (
 const createMeeting = `-- name: CreateMeeting :one
 INSERT INTO
     meetings (
+        id,
         title,
         started_at,
         ended_at,
@@ -22,12 +23,13 @@ INSERT INTO
         video_path
     )
 VALUES
-    ($1, $2, $3, $4, $5, $6)
+    ($1, $2, $3, $4, $5, $6, $7)
 RETURNING
     id, title, started_at, ended_at, duration_seconds, audio_path, video_path, created_at, updated_at
 `
 
 type CreateMeetingParams struct {
+	ID              pgtype.UUID        `json:"id"`
 	Title           string             `json:"title"`
 	StartedAt       pgtype.Timestamptz `json:"started_at"`
 	EndedAt         pgtype.Timestamptz `json:"ended_at"`
@@ -39,6 +41,7 @@ type CreateMeetingParams struct {
 // db/queries/meetings.sql
 func (q *Queries) CreateMeeting(ctx context.Context, arg CreateMeetingParams) (Meeting, error) {
 	row := q.db.QueryRow(ctx, createMeeting,
+		arg.ID,
 		arg.Title,
 		arg.StartedAt,
 		arg.EndedAt,

@@ -39,6 +39,7 @@ func LoadConfig() (*Config, error) {
 	_ = godotenv.Load()
 	return &Config{
 		Database: DatabaseConfig{
+			Url:      getEnv("DB_URL", ""),
 			Host:     getEnv("DB_HOST", "localhost"),
 			Password: getEnv("DB_PASSWORD", ""),
 			Port:     getEnv("DB_PORT", "5432"),

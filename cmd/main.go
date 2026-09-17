@@ -57,7 +57,7 @@ func main() {
 	transcriptService := dbservices.NewTranscriptService(transcriptRepository)
 
 	// handlers
-	recordingHandler := handlers.NewRecordingHandler(fileService, audioService, transcribeService, LOGGER)
+	recordingHandler := handlers.NewRecordingHandler(fileService, audioService, transcribeService, meetingService, transcriptService, LOGGER)
 	meetingHandler := handlers.NewMeetingHandler(meetingService)
 	transcriptHandler := handlers.NewTranscriptHandler(transcriptService)
 

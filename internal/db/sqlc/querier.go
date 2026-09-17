@@ -17,6 +17,8 @@ type Querier interface {
 	CreateMeetingDecision(ctx context.Context, arg CreateMeetingDecisionParams) (MeetingDecision, error)
 	// db/queries/transcripts.sql
 	CreateTranscriptSegment(ctx context.Context, arg CreateTranscriptSegmentParams) (TranscriptSegment, error)
+	// db/queries/vectors.sql
+	CreateTranscriptVectorEmbedding(ctx context.Context, arg CreateTranscriptVectorEmbeddingParams) (TranscriptChunk, error)
 	DeleteMeeting(ctx context.Context, id pgtype.UUID) error
 	DeleteMeetingActionItem(ctx context.Context, id pgtype.UUID) error
 	DeleteMeetingActionItems(ctx context.Context, meetingID pgtype.UUID) error
@@ -36,6 +38,7 @@ type Querier interface {
 	ListTranscriptSegments(ctx context.Context, meetingID pgtype.UUID) ([]TranscriptSegment, error)
 	MarkActionItemCompleted(ctx context.Context, id pgtype.UUID) (MeetingActionItem, error)
 	MarkActionItemIncomplete(ctx context.Context, id pgtype.UUID) (MeetingActionItem, error)
+	SearchTranscriptChunk(ctx context.Context, arg SearchTranscriptChunkParams) ([]SearchTranscriptChunkRow, error)
 	UpdateMeeting(ctx context.Context, arg UpdateMeetingParams) (Meeting, error)
 	UpdateMeetingActionItem(ctx context.Context, arg UpdateMeetingActionItemParams) (MeetingActionItem, error)
 	UpdateTranscriptSegment(ctx context.Context, arg UpdateTranscriptSegmentParams) (TranscriptSegment, error)

@@ -6,6 +6,7 @@ package sqlc
 
 import (
 	"github.com/jackc/pgx/v5/pgtype"
+	pgvector_go "github.com/pgvector/pgvector-go"
 )
 
 type Meeting struct {
@@ -36,6 +37,13 @@ type MeetingDecision struct {
 	Decision         string             `json:"decision"`
 	TimestampSeconds float64            `json:"timestamp_seconds"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+}
+
+type TranscriptChunk struct {
+	ID        pgtype.UUID        `json:"id"`
+	MeetingID pgtype.UUID        `json:"meeting_id"`
+	Chunk     string             `json:"chunk"`
+	Embedding pgvector_go.Vector `json:"embedding"`
 }
 
 type TranscriptSegment struct {

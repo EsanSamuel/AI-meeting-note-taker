@@ -51,7 +51,11 @@ func NewMeetingRepository(pool *pgxpool.Pool) *MeetingRepository {
 // ---- Meetings ----
 
 func (r *MeetingRepository) CreateMeeting(ctx context.Context, m Meeting) (Meeting, error) {
+	if m.ID == uuid.Nil {
+		m.ID = uuid.New()
+	}
 	row, err := r.q.CreateMeeting(ctx, sqlc.CreateMeetingParams{
+		ID:              pgtype.UUID{Bytes: m.ID, Valid: true},
 		Title:           m.Title,
 		StartedAt:       pgtype.Timestamptz{Time: m.StartedAt, Valid: true},
 		EndedAt:         pgtype.Timestamptz{Time: m.EndedAt, Valid: true},
