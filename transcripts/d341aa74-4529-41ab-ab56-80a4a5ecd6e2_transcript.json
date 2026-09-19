@@ -1,0 +1,38 @@
+[
+  {
+    "start": 0,
+    "end": 1.72,
+    "speaker": "SPEAKER_00",
+    "text": " Hi, how are you?"
+  },
+  {
+    "start": 4.3,
+    "end": 6.7,
+    "speaker": "SPEAKER_01",
+    "text": " I'm good, thank you, and you."
+  },
+  {
+    "start": 8,
+    "end": 10.5,
+    "speaker": "SPEAKER_00",
+    "text": " I'm fine, what are you doing here?"
+  },
+  {
+    "start": 11.8,
+    "end": 14.8,
+    "speaker": "SPEAKER_01",
+    "text": " I'm just taking a walk. The weather is nice today."
+  },
+  {
+    "start": 16.7,
+    "end": 19.8,
+    "speaker": "SPEAKER_00",
+    "text": " Yes, it is. Want to join me for coffee?"
+  },
+  {
+    "start": 21.9,
+    "end": 23.7,
+    "speaker": "SPEAKER_01",
+    "text": " Great idea, let's go."
+  }
+]

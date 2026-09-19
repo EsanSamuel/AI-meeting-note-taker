@@ -143,7 +143,7 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 		}
 	}
 
-	chunks := handler.transcription.ChunkTranscript(merged_segments, 15.0)
+	chunks := handler.transcription.ChunkTranscript(merged_segments, 15.0, meetingID)
 	for i, chunk := range chunks {
 		println("Chunk", i+1)
 		println("Start:", chunk.Start)
@@ -152,7 +152,7 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 		println(services.FormatChunk(chunk))
 	}
 
-	summarizationResult, err := handler.transcription.SummarizeTranscripts(chunks, audio.ID)
+	summarizationResult, err := handler.transcription.SummarizeTranscripts(chunks, audio.ID, meetingID)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("summarizing transcript: %v", err)})
 		return

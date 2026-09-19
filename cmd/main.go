@@ -47,12 +47,13 @@ func main() {
 	// repositories
 	meetingRepository := repository.NewMeetingRepository(db)
 	transcriptRepository := repository.NewTranscriptRepository(db)
+	vectorRepository := repository.NewVectorRepository(db)
 
 	// services
 	fileService := services.NewFileService(storageDir, maxSize)
 	audioService := services.NewAudioService("", 5*time.Minute)
 	llamaService := llama.NewLlamaService()
-	transcribeService := services.NewTranscribeService(llamaService)
+	transcribeService := services.NewTranscribeService(llamaService, vectorRepository)
 	meetingService := dbservices.NewMeetingService(meetingRepository)
 	transcriptService := dbservices.NewTranscriptService(transcriptRepository)
 

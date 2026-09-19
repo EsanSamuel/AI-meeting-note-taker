@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -13,6 +14,10 @@ import (
 	"example.com/internal/config"
 	"example.com/internal/diarization"
 	"example.com/internal/llama"
+	"example.com/internal/repository"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/pgvector/pgvector-go"
 )
 
 type TranscriptionResult struct {
@@ -117,17 +122,19 @@ type TranscribeService interface {
 	ConvertTranscribedJsonToStruct(jsonData []byte) (*WhisperOutput, error)
 	TranscribeWAV(audioPath, audioID, modelPath string) (TranscriptionResult, error)
 	MergeTranscriptionWithDiarization(transcription *WhisperOutput, diarizationSegments []diarization.Segment, audioID string) ([]MergedSegment, error)
-	ChunkTranscript(transcripts []MergedSegment, maxDuration float64) []TranscriptChunk
-	SummarizeTranscripts(transcriptChunks []TranscriptChunk, audioID string) ([]MeetingAnalysis, error)
+	ChunkTranscript(transcripts []MergedSegment, maxDuration float64, meetingID uuid.UUID) []TranscriptChunk
+	SummarizeTranscripts(transcriptChunks []TranscriptChunk, audioID string, meetingID uuid.UUID) ([]MeetingAnalysis, error)
 }
 
 type transcribeService struct {
-	llama llama.LlamaService
+	llama  llama.LlamaService
+	vector repository.VectorRepository
 }
 
-func NewTranscribeService(llama llama.LlamaService) TranscribeService {
+func NewTranscribeService(llama llama.LlamaService, vector repository.VectorRepository) TranscribeService {
 	return &transcribeService{
-		llama: llama,
+		llama:  llama,
+		vector: vector,
 	}
 }
 
@@ -215,7 +222,8 @@ func (s *transcribeService) MergeTranscriptionWithDiarization(transcription *Whi
 	return merged, nil
 }
 
-func (s *transcribeService) ChunkTranscript(segments []MergedSegment, maxDuration float64) []TranscriptChunk {
+func (s *transcribeService) ChunkTranscript(segments []MergedSegment, maxDuration float64, meetingID uuid.UUID) []TranscriptChunk {
+	var ctx = context.Background()
 	var chunks []TranscriptChunk
 
 	if len(segments) == 0 {
@@ -250,6 +258,24 @@ func (s *transcribeService) ChunkTranscript(segments []MergedSegment, maxDuratio
 		current.End = current.Segments[len(current.Segments)-1].End
 		chunks = append(chunks, current)
 	}
+
+	for _, chunk := range chunks {
+		chunkString := FormatChunk(chunk)
+		embedding, err := s.llama.GenerateEmbeddingServer(chunkString)
+		if err != nil {
+			fmt.Printf("Error generating embedding %s", err)
+			return nil
+		}
+
+		fmt.Println(embedding, len(embedding))
+
+		_, err = s.vector.CreateVector(ctx, repository.CreateTranscriptVectorEmbeddingParams{MeetingID: pgtype.UUID{Bytes: meetingID, Valid: true}, Chunk: chunkString, Embedding: pgvector.NewVector(embedding)})
+		if err != nil {
+			fmt.Printf("Error creating vector to db %s", err)
+			return nil
+		}
+
+	}
 	return chunks
 }
 
@@ -270,7 +296,7 @@ func FormatChunk(chunk TranscriptChunk) string {
 	return b.String()
 }
 
-func (s *transcribeService) SummarizeTranscripts(transcriptChunks []TranscriptChunk, audioID string) ([]MeetingAnalysis, error) {
+func (s *transcribeService) SummarizeTranscripts(transcriptChunks []TranscriptChunk, audioID string, meetingID uuid.UUID) ([]MeetingAnalysis, error) {
 	if len(transcriptChunks) == 0 {
 		return []MeetingAnalysis{}, fmt.Errorf("no transcript chunks provided for summarization")
 	}
