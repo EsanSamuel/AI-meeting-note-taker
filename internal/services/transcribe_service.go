@@ -89,6 +89,14 @@ type MergedSegment struct {
 	Text    string  `json:"text"`
 }
 
+type UpdateTranscriptSegmentSpeaker struct {
+	Start     float64 `json:"start"`
+	End       float64 `json:"end"`
+	SpeakerID string  `json:"speaker_id"`
+	Speaker   string  `json:"speaker"`
+	Text      string  `json:"text"`
+}
+
 type TranscriptChunk struct {
 	Segments []MergedSegment
 	Start    float64
@@ -124,17 +132,20 @@ type TranscribeService interface {
 	MergeTranscriptionWithDiarization(transcription *WhisperOutput, diarizationSegments []diarization.Segment, audioID string) ([]MergedSegment, error)
 	ChunkTranscript(transcripts []MergedSegment, maxDuration float64, meetingID uuid.UUID) []TranscriptChunk
 	SummarizeTranscripts(transcriptChunks []TranscriptChunk, audioID string, meetingID uuid.UUID) ([]MeetingAnalysis, error)
+	UpdateSpeakers(ctx context.Context, meetingID uuid.UUID, speakers map[string]string) error
 }
 
 type transcribeService struct {
-	llama  llama.LlamaService
-	vector repository.VectorRepository
+	llama          llama.LlamaService
+	vector         repository.VectorRepository
+	transcriptRepo repository.TranscriptRepository
 }
 
-func NewTranscribeService(llama llama.LlamaService, vector repository.VectorRepository) TranscribeService {
+func NewTranscribeService(llama llama.LlamaService, vector repository.VectorRepository, transcriptRepo repository.TranscriptRepository) TranscribeService {
 	return &transcribeService{
-		llama:  llama,
-		vector: vector,
+		llama:          llama,
+		vector:         vector,
+		transcriptRepo: transcriptRepo,
 	}
 }
 
@@ -412,4 +423,45 @@ Transcript: %v`, formattedChunks)
 	}
 
 	return analyses, nil
+}
+
+func (s *transcribeService) UpdateSpeakers(ctx context.Context, meetingID uuid.UUID, speakers map[string]string) error {
+	// Update db file
+	for speakerID, speakerName := range speakers {
+		err := s.transcriptRepo.UpdateTranscriptSpeaker(ctx, repository.UpdateSpeakerParams{MeetingID: pgtype.UUID{Bytes: meetingID, Valid: true}, SpeakerID: speakerID, Speaker: pgtype.Text{String: speakerName, Valid: speakerName != ""}})
+		if err != nil {
+			return fmt.Errorf("failed to update meeting speakers name: %w", err)
+		}
+	}
+
+	// Local file update
+	meetingFilePath := fmt.Sprintf("%s_transcript.json", meetingID)
+
+	data, err := os.ReadFile(meetingFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %w", err)
+	}
+
+	var transcriptFile []UpdateTranscriptSegmentSpeaker
+
+	if err := json.Unmarshal(data, &transcriptFile); err != nil {
+		return fmt.Errorf("failed to unmarshal transcript file: %w", err)
+	}
+
+	for i := range transcriptFile {
+		speakerID := transcriptFile[i].Speaker
+		if name, ok := speakers[transcriptFile[i].Speaker]; ok {
+			transcriptFile[i].SpeakerID = speakerID
+			transcriptFile[i].Speaker = name
+		}
+	}
+
+	transcriptFileIndent, err := json.MarshalIndent(transcriptFile, "", "  ")
+
+	err = os.WriteFile(meetingFilePath, transcriptFileIndent, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to create transcript file: %v", err)
+	}
+
+	return nil
 }

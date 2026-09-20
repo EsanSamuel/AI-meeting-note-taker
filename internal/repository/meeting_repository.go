@@ -40,17 +40,44 @@ type MeetingActionItem struct {
 	CreatedAt        time.Time `json:"created_at"`
 }
 
-type MeetingRepository struct {
+type MeetingRepository interface {
+	// Meetings
+	CreateMeeting(ctx context.Context, m Meeting) (Meeting, error)
+	GetMeeting(ctx context.Context, id uuid.UUID) (Meeting, error)
+	ListMeetings(ctx context.Context) ([]Meeting, error)
+	UpdateMeeting(ctx context.Context, m Meeting) (Meeting, error)
+	DeleteMeeting(ctx context.Context, id uuid.UUID) error
+
+	// Decisions
+	CreateMeetingDecision(ctx context.Context, d MeetingDecision) (MeetingDecision, error)
+	GetMeetingDecision(ctx context.Context, id uuid.UUID) (MeetingDecision, error)
+	ListMeetingDecisions(ctx context.Context, meetingID uuid.UUID) ([]MeetingDecision, error)
+	DeleteMeetingDecision(ctx context.Context, id uuid.UUID) error
+	DeleteMeetingDecisions(ctx context.Context, meetingID uuid.UUID) error
+
+	// Action items
+	CreateMeetingActionItem(ctx context.Context, a MeetingActionItem) (MeetingActionItem, error)
+	GetMeetingActionItem(ctx context.Context, id uuid.UUID) (MeetingActionItem, error)
+	ListMeetingActionItems(ctx context.Context, meetingID uuid.UUID) ([]MeetingActionItem, error)
+	ListIncompleteActionItems(ctx context.Context, meetingID uuid.UUID) ([]MeetingActionItem, error)
+	UpdateMeetingActionItem(ctx context.Context, a MeetingActionItem) (MeetingActionItem, error)
+	MarkActionItemCompleted(ctx context.Context, id uuid.UUID) (MeetingActionItem, error)
+	MarkActionItemIncomplete(ctx context.Context, id uuid.UUID) (MeetingActionItem, error)
+	DeleteMeetingActionItem(ctx context.Context, id uuid.UUID) error
+	DeleteMeetingActionItems(ctx context.Context, meetingID uuid.UUID) error
+}
+
+type meetingRepository struct {
 	q *sqlc.Queries
 }
 
-func NewMeetingRepository(pool *pgxpool.Pool) *MeetingRepository {
-	return &MeetingRepository{q: sqlc.New(pool)}
+func NewMeetingRepository(pool *pgxpool.Pool) MeetingRepository {
+	return &meetingRepository{q: sqlc.New(pool)}
 }
 
 // ---- Meetings ----
 
-func (r *MeetingRepository) CreateMeeting(ctx context.Context, m Meeting) (Meeting, error) {
+func (r *meetingRepository) CreateMeeting(ctx context.Context, m Meeting) (Meeting, error) {
 	if m.ID == uuid.Nil {
 		m.ID = uuid.New()
 	}
@@ -69,7 +96,7 @@ func (r *MeetingRepository) CreateMeeting(ctx context.Context, m Meeting) (Meeti
 	return meetingFromRow(row), nil
 }
 
-func (r *MeetingRepository) GetMeeting(ctx context.Context, id uuid.UUID) (Meeting, error) {
+func (r *meetingRepository) GetMeeting(ctx context.Context, id uuid.UUID) (Meeting, error) {
 	row, err := r.q.GetMeeting(ctx, pgtype.UUID{Bytes: id, Valid: true})
 	if err != nil {
 		return Meeting{}, err
@@ -77,7 +104,7 @@ func (r *MeetingRepository) GetMeeting(ctx context.Context, id uuid.UUID) (Meeti
 	return meetingFromRow(row), nil
 }
 
-func (r *MeetingRepository) ListMeetings(ctx context.Context) ([]Meeting, error) {
+func (r *meetingRepository) ListMeetings(ctx context.Context) ([]Meeting, error) {
 	rows, err := r.q.ListMeetings(ctx)
 	if err != nil {
 		return nil, err
@@ -89,7 +116,7 @@ func (r *MeetingRepository) ListMeetings(ctx context.Context) ([]Meeting, error)
 	return meetings, nil
 }
 
-func (r *MeetingRepository) UpdateMeeting(ctx context.Context, m Meeting) (Meeting, error) {
+func (r *meetingRepository) UpdateMeeting(ctx context.Context, m Meeting) (Meeting, error) {
 	row, err := r.q.UpdateMeeting(ctx, sqlc.UpdateMeetingParams{
 		ID:              pgtype.UUID{Bytes: m.ID, Valid: true},
 		Title:           m.Title,
@@ -105,13 +132,13 @@ func (r *MeetingRepository) UpdateMeeting(ctx context.Context, m Meeting) (Meeti
 	return meetingFromRow(row), nil
 }
 
-func (r *MeetingRepository) DeleteMeeting(ctx context.Context, id uuid.UUID) error {
+func (r *meetingRepository) DeleteMeeting(ctx context.Context, id uuid.UUID) error {
 	return r.q.DeleteMeeting(ctx, pgtype.UUID{Bytes: id, Valid: true})
 }
 
 // ---- Decisions ----
 
-func (r *MeetingRepository) CreateMeetingDecision(ctx context.Context, d MeetingDecision) (MeetingDecision, error) {
+func (r *meetingRepository) CreateMeetingDecision(ctx context.Context, d MeetingDecision) (MeetingDecision, error) {
 	row, err := r.q.CreateMeetingDecision(ctx, sqlc.CreateMeetingDecisionParams{
 		MeetingID:        pgtype.UUID{Bytes: d.MeetingID, Valid: true},
 		Decision:         d.Decision,
@@ -123,7 +150,7 @@ func (r *MeetingRepository) CreateMeetingDecision(ctx context.Context, d Meeting
 	return decisionFromRow(row), nil
 }
 
-func (r *MeetingRepository) GetMeetingDecision(ctx context.Context, id uuid.UUID) (MeetingDecision, error) {
+func (r *meetingRepository) GetMeetingDecision(ctx context.Context, id uuid.UUID) (MeetingDecision, error) {
 	row, err := r.q.GetMeetingDecision(ctx, pgtype.UUID{Bytes: id, Valid: true})
 	if err != nil {
 		return MeetingDecision{}, err
@@ -131,7 +158,7 @@ func (r *MeetingRepository) GetMeetingDecision(ctx context.Context, id uuid.UUID
 	return decisionFromRow(row), nil
 }
 
-func (r *MeetingRepository) ListMeetingDecisions(ctx context.Context, meetingID uuid.UUID) ([]MeetingDecision, error) {
+func (r *meetingRepository) ListMeetingDecisions(ctx context.Context, meetingID uuid.UUID) ([]MeetingDecision, error) {
 	rows, err := r.q.ListMeetingDecisions(ctx, pgtype.UUID{Bytes: meetingID, Valid: true})
 	if err != nil {
 		return nil, err
@@ -143,17 +170,17 @@ func (r *MeetingRepository) ListMeetingDecisions(ctx context.Context, meetingID 
 	return decisions, nil
 }
 
-func (r *MeetingRepository) DeleteMeetingDecision(ctx context.Context, id uuid.UUID) error {
+func (r *meetingRepository) DeleteMeetingDecision(ctx context.Context, id uuid.UUID) error {
 	return r.q.DeleteMeetingDecision(ctx, pgtype.UUID{Bytes: id, Valid: true})
 }
 
-func (r *MeetingRepository) DeleteMeetingDecisions(ctx context.Context, meetingID uuid.UUID) error {
+func (r *meetingRepository) DeleteMeetingDecisions(ctx context.Context, meetingID uuid.UUID) error {
 	return r.q.DeleteMeetingDecisions(ctx, pgtype.UUID{Bytes: meetingID, Valid: true})
 }
 
 // ---- Action items ----
 
-func (r *MeetingRepository) CreateMeetingActionItem(ctx context.Context, a MeetingActionItem) (MeetingActionItem, error) {
+func (r *meetingRepository) CreateMeetingActionItem(ctx context.Context, a MeetingActionItem) (MeetingActionItem, error) {
 	row, err := r.q.CreateMeetingActionItem(ctx, sqlc.CreateMeetingActionItemParams{
 		MeetingID:        pgtype.UUID{Bytes: a.MeetingID, Valid: true},
 		Task:             a.Task,
@@ -166,7 +193,7 @@ func (r *MeetingRepository) CreateMeetingActionItem(ctx context.Context, a Meeti
 	return actionItemFromRow(row), nil
 }
 
-func (r *MeetingRepository) GetMeetingActionItem(ctx context.Context, id uuid.UUID) (MeetingActionItem, error) {
+func (r *meetingRepository) GetMeetingActionItem(ctx context.Context, id uuid.UUID) (MeetingActionItem, error) {
 	row, err := r.q.GetMeetingActionItem(ctx, pgtype.UUID{Bytes: id, Valid: true})
 	if err != nil {
 		return MeetingActionItem{}, err
@@ -174,7 +201,7 @@ func (r *MeetingRepository) GetMeetingActionItem(ctx context.Context, id uuid.UU
 	return actionItemFromRow(row), nil
 }
 
-func (r *MeetingRepository) ListMeetingActionItems(ctx context.Context, meetingID uuid.UUID) ([]MeetingActionItem, error) {
+func (r *meetingRepository) ListMeetingActionItems(ctx context.Context, meetingID uuid.UUID) ([]MeetingActionItem, error) {
 	rows, err := r.q.ListMeetingActionItems(ctx, pgtype.UUID{Bytes: meetingID, Valid: true})
 	if err != nil {
 		return nil, err
@@ -186,7 +213,7 @@ func (r *MeetingRepository) ListMeetingActionItems(ctx context.Context, meetingI
 	return items, nil
 }
 
-func (r *MeetingRepository) ListIncompleteActionItems(ctx context.Context, meetingID uuid.UUID) ([]MeetingActionItem, error) {
+func (r *meetingRepository) ListIncompleteActionItems(ctx context.Context, meetingID uuid.UUID) ([]MeetingActionItem, error) {
 	rows, err := r.q.ListIncompleteActionItems(ctx, pgtype.UUID{Bytes: meetingID, Valid: true})
 	if err != nil {
 		return nil, err
@@ -198,7 +225,7 @@ func (r *MeetingRepository) ListIncompleteActionItems(ctx context.Context, meeti
 	return items, nil
 }
 
-func (r *MeetingRepository) UpdateMeetingActionItem(ctx context.Context, a MeetingActionItem) (MeetingActionItem, error) {
+func (r *meetingRepository) UpdateMeetingActionItem(ctx context.Context, a MeetingActionItem) (MeetingActionItem, error) {
 	row, err := r.q.UpdateMeetingActionItem(ctx, sqlc.UpdateMeetingActionItemParams{
 		ID:               pgtype.UUID{Bytes: a.ID, Valid: true},
 		Task:             a.Task,
@@ -212,7 +239,7 @@ func (r *MeetingRepository) UpdateMeetingActionItem(ctx context.Context, a Meeti
 	return actionItemFromRow(row), nil
 }
 
-func (r *MeetingRepository) MarkActionItemCompleted(ctx context.Context, id uuid.UUID) (MeetingActionItem, error) {
+func (r *meetingRepository) MarkActionItemCompleted(ctx context.Context, id uuid.UUID) (MeetingActionItem, error) {
 	row, err := r.q.MarkActionItemCompleted(ctx, pgtype.UUID{Bytes: id, Valid: true})
 	if err != nil {
 		return MeetingActionItem{}, err
@@ -220,7 +247,7 @@ func (r *MeetingRepository) MarkActionItemCompleted(ctx context.Context, id uuid
 	return actionItemFromRow(row), nil
 }
 
-func (r *MeetingRepository) MarkActionItemIncomplete(ctx context.Context, id uuid.UUID) (MeetingActionItem, error) {
+func (r *meetingRepository) MarkActionItemIncomplete(ctx context.Context, id uuid.UUID) (MeetingActionItem, error) {
 	row, err := r.q.MarkActionItemIncomplete(ctx, pgtype.UUID{Bytes: id, Valid: true})
 	if err != nil {
 		return MeetingActionItem{}, err
@@ -228,11 +255,11 @@ func (r *MeetingRepository) MarkActionItemIncomplete(ctx context.Context, id uui
 	return actionItemFromRow(row), nil
 }
 
-func (r *MeetingRepository) DeleteMeetingActionItem(ctx context.Context, id uuid.UUID) error {
+func (r *meetingRepository) DeleteMeetingActionItem(ctx context.Context, id uuid.UUID) error {
 	return r.q.DeleteMeetingActionItem(ctx, pgtype.UUID{Bytes: id, Valid: true})
 }
 
-func (r *MeetingRepository) DeleteMeetingActionItems(ctx context.Context, meetingID uuid.UUID) error {
+func (r *meetingRepository) DeleteMeetingActionItems(ctx context.Context, meetingID uuid.UUID) error {
 	return r.q.DeleteMeetingActionItems(ctx, pgtype.UUID{Bytes: meetingID, Valid: true})
 }
 

@@ -6,15 +6,21 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"example.com/internal/repository"
+	transcriptService "example.com/internal/services"
 	services "example.com/internal/services/db"
 )
 
-type TranscriptHandler struct {
-	svc *services.TranscriptService
+type UpdateSpeakersRequest struct {
+	Speakers map[string]string `json:"speakers"`
 }
 
-func NewTranscriptHandler(svc *services.TranscriptService) *TranscriptHandler {
-	return &TranscriptHandler{svc: svc}
+type TranscriptHandler struct {
+	svc           *services.TranscriptService
+	transcriptSvc transcriptService.TranscribeService
+}
+
+func NewTranscriptHandler(svc *services.TranscriptService, transcriptSvc transcriptService.TranscribeService) *TranscriptHandler {
+	return &TranscriptHandler{svc: svc, transcriptSvc: transcriptSvc}
 }
 
 type createTranscriptSegmentRequest struct {
@@ -137,4 +143,43 @@ func (h *TranscriptHandler) DeleteTranscriptSegmentsByMeeting(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func (h *TranscriptHandler) UpdateSpeakers(c *gin.Context) {
+	meetingID, ok := parseUUID(c, "meeting_id")
+	if !ok {
+		return
+	}
+
+	var req UpdateSpeakersRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid request body",
+		})
+		return
+	}
+
+	if len(req.Speakers) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "speakers cannot be empty",
+		})
+		return
+	}
+
+	err := h.transcriptSvc.UpdateSpeakers(
+		c.Request.Context(),
+		meetingID,
+		req.Speakers,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "speakers updated successfully",
+	})
 }

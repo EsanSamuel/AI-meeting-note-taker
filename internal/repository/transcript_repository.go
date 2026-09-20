@@ -22,15 +22,31 @@ type TranscriptSegment struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-type TranscriptRepository struct {
+type UpdateSpeakerParams struct {
+	Speaker   pgtype.Text `json:"speaker"`
+	MeetingID pgtype.UUID `json:"meeting_id"`
+	SpeakerID string      `json:"speaker_id"`
+}
+
+type TranscriptRepository interface {
+	CreateTranscriptSegment(ctx context.Context, s TranscriptSegment) (TranscriptSegment, error)
+	GetTranscriptSegment(ctx context.Context, id uuid.UUID) (TranscriptSegment, error)
+	ListTranscriptSegments(ctx context.Context, meetingID uuid.UUID) ([]TranscriptSegment, error)
+	UpdateTranscriptSegment(ctx context.Context, s TranscriptSegment) (TranscriptSegment, error)
+	UpdateTranscriptSpeaker(ctx context.Context, s UpdateSpeakerParams) error
+	DeleteTranscriptSegment(ctx context.Context, id uuid.UUID) error
+	DeleteTranscriptSegmentsByMeeting(ctx context.Context, meetingID uuid.UUID) error
+}
+
+type transcriptRepository struct {
 	q *sqlc.Queries
 }
 
-func NewTranscriptRepository(pool *pgxpool.Pool) *TranscriptRepository {
-	return &TranscriptRepository{q: sqlc.New(pool)}
+func NewTranscriptRepository(pool *pgxpool.Pool) TranscriptRepository {
+	return &transcriptRepository{q: sqlc.New(pool)}
 }
 
-func (r *TranscriptRepository) CreateTranscriptSegment(ctx context.Context, s TranscriptSegment) (TranscriptSegment, error) {
+func (r *transcriptRepository) CreateTranscriptSegment(ctx context.Context, s TranscriptSegment) (TranscriptSegment, error) {
 	row, err := r.q.CreateTranscriptSegment(ctx, sqlc.CreateTranscriptSegmentParams{
 		MeetingID: pgtype.UUID{Bytes: s.MeetingID, Valid: true},
 		StartTime: s.StartTime,
@@ -45,7 +61,7 @@ func (r *TranscriptRepository) CreateTranscriptSegment(ctx context.Context, s Tr
 	return segmentFromRow(row), nil
 }
 
-func (r *TranscriptRepository) GetTranscriptSegment(ctx context.Context, id uuid.UUID) (TranscriptSegment, error) {
+func (r *transcriptRepository) GetTranscriptSegment(ctx context.Context, id uuid.UUID) (TranscriptSegment, error) {
 	row, err := r.q.GetTranscriptSegment(ctx, pgtype.UUID{Bytes: id, Valid: true})
 	if err != nil {
 		return TranscriptSegment{}, err
@@ -53,7 +69,7 @@ func (r *TranscriptRepository) GetTranscriptSegment(ctx context.Context, id uuid
 	return segmentFromRow(row), nil
 }
 
-func (r *TranscriptRepository) ListTranscriptSegments(ctx context.Context, meetingID uuid.UUID) ([]TranscriptSegment, error) {
+func (r *transcriptRepository) ListTranscriptSegments(ctx context.Context, meetingID uuid.UUID) ([]TranscriptSegment, error) {
 	rows, err := r.q.ListTranscriptSegments(ctx, pgtype.UUID{Bytes: meetingID, Valid: true})
 	if err != nil {
 		return nil, err
@@ -65,7 +81,7 @@ func (r *TranscriptRepository) ListTranscriptSegments(ctx context.Context, meeti
 	return segments, nil
 }
 
-func (r *TranscriptRepository) UpdateTranscriptSegment(ctx context.Context, s TranscriptSegment) (TranscriptSegment, error) {
+func (r *transcriptRepository) UpdateTranscriptSegment(ctx context.Context, s TranscriptSegment) (TranscriptSegment, error) {
 	row, err := r.q.UpdateTranscriptSegment(ctx, sqlc.UpdateTranscriptSegmentParams{
 		ID:        pgtype.UUID{Bytes: s.ID, Valid: true},
 		Text:      s.Text,
@@ -79,16 +95,27 @@ func (r *TranscriptRepository) UpdateTranscriptSegment(ctx context.Context, s Tr
 	return segmentFromRow(row), nil
 }
 
-func (r *TranscriptRepository) DeleteTranscriptSegment(ctx context.Context, id uuid.UUID) error {
+func (r *transcriptRepository) UpdateTranscriptSpeaker(ctx context.Context, s UpdateSpeakerParams) error {
+	_, err := r.q.UpdateSpeakers(ctx, sqlc.UpdateSpeakersParams{
+		SpeakerID: s.SpeakerID,
+		MeetingID: s.MeetingID,
+		Speaker:   s.Speaker,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *transcriptRepository) DeleteTranscriptSegment(ctx context.Context, id uuid.UUID) error {
 	return r.q.DeleteTranscriptSegment(ctx, pgtype.UUID{Bytes: id, Valid: true})
 }
 
-func (r *TranscriptRepository) DeleteTranscriptSegmentsByMeeting(ctx context.Context, meetingID uuid.UUID) error {
+func (r *transcriptRepository) DeleteTranscriptSegmentsByMeeting(ctx context.Context, meetingID uuid.UUID) error {
 	return r.q.DeleteTranscriptSegmentsByMeeting(ctx, pgtype.UUID{Bytes: meetingID, Valid: true})
 }
 
 func segmentFromRow(row sqlc.TranscriptSegment) TranscriptSegment {
-
 	return TranscriptSegment{
 		ID:        uuid.UUID(row.ID.Bytes),
 		MeetingID: uuid.UUID(row.MeetingID.Bytes),

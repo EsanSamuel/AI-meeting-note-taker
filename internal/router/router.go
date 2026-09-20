@@ -46,6 +46,7 @@ func New(recordingHandler *handlers.RecordingHandler, meetingHandler *handlers.M
 	api.POST("/meetings/:id/transcript-segments", transcriptHandler.CreateTranscriptSegment)
 	api.GET("/meetings/:id/transcript-segments", transcriptHandler.ListTranscriptSegments)
 	api.DELETE("/meetings/:id/transcript-segments", transcriptHandler.DeleteTranscriptSegmentsByMeeting)
+	api.PUT("/meetings/:id/transcript-segments/update-speakers", transcriptHandler.UpdateSpeakers)
 	api.GET("/transcript-segments/:id", transcriptHandler.GetTranscriptSegment)
 	api.PUT("/transcript-segments/:id", transcriptHandler.UpdateTranscriptSegment)
 	api.DELETE("/transcript-segments/:id", transcriptHandler.DeleteTranscriptSegment)

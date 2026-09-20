@@ -9,10 +9,10 @@ import (
 )
 
 type TranscriptService struct {
-	repo *repository.TranscriptRepository
+	repo repository.TranscriptRepository
 }
 
-func NewTranscriptService(repo *repository.TranscriptRepository) *TranscriptService {
+func NewTranscriptService(repo repository.TranscriptRepository) *TranscriptService {
 	return &TranscriptService{repo: repo}
 }
 

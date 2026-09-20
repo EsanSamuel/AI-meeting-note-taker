@@ -53,14 +53,14 @@ func main() {
 	fileService := services.NewFileService(storageDir, maxSize)
 	audioService := services.NewAudioService("", 5*time.Minute)
 	llamaService := llama.NewLlamaService()
-	transcribeService := services.NewTranscribeService(llamaService, vectorRepository)
+	transcribeService := services.NewTranscribeService(llamaService, vectorRepository, transcriptRepository)
 	meetingService := dbservices.NewMeetingService(meetingRepository)
 	transcriptService := dbservices.NewTranscriptService(transcriptRepository)
 
 	// handlers
 	recordingHandler := handlers.NewRecordingHandler(fileService, audioService, transcribeService, meetingService, transcriptService, LOGGER)
 	meetingHandler := handlers.NewMeetingHandler(meetingService)
-	transcriptHandler := handlers.NewTranscriptHandler(transcriptService)
+	transcriptHandler := handlers.NewTranscriptHandler(transcriptService, transcribeService)
 
 	if err := router.New(recordingHandler, meetingHandler, transcriptHandler).Run(serverAddr); err != nil {
 		panic(err)

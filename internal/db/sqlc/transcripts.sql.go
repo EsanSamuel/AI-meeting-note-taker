@@ -149,6 +149,52 @@ func (q *Queries) ListTranscriptSegments(ctx context.Context, meetingID pgtype.U
 	return items, nil
 }
 
+const updateSpeakers = `-- name: UpdateSpeakers :many
+UPDATE transcript_segments
+SET
+    speaker = $1
+WHERE
+    meeting_id = $2
+    AND speaker_id = $3
+RETURNING
+    id, meeting_id, start_time, end_time, speaker_id, speaker, text, created_at
+`
+
+type UpdateSpeakersParams struct {
+	Speaker   pgtype.Text `json:"speaker"`
+	MeetingID pgtype.UUID `json:"meeting_id"`
+	SpeakerID string      `json:"speaker_id"`
+}
+
+func (q *Queries) UpdateSpeakers(ctx context.Context, arg UpdateSpeakersParams) ([]TranscriptSegment, error) {
+	rows, err := q.db.Query(ctx, updateSpeakers, arg.Speaker, arg.MeetingID, arg.SpeakerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TranscriptSegment{}
+	for rows.Next() {
+		var i TranscriptSegment
+		if err := rows.Scan(
+			&i.ID,
+			&i.MeetingID,
+			&i.StartTime,
+			&i.EndTime,
+			&i.SpeakerID,
+			&i.Speaker,
+			&i.Text,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateTranscriptSegment = `-- name: UpdateTranscriptSegment :one
 UPDATE transcript_segments
 SET

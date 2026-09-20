@@ -9,10 +9,10 @@ import (
 )
 
 type MeetingService struct {
-	repo *repository.MeetingRepository
+	repo repository.MeetingRepository
 }
 
-func NewMeetingService(repo *repository.MeetingRepository) *MeetingService {
+func NewMeetingService(repo repository.MeetingRepository) *MeetingService {
 	return &MeetingService{repo: repo}
 }
 

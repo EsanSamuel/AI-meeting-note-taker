@@ -56,3 +56,13 @@ WHERE
 DELETE FROM transcript_segments
 WHERE
     meeting_id = $1;
+
+-- name: UpdateSpeakers :many
+UPDATE transcript_segments
+SET
+    speaker = $1
+WHERE
+    meeting_id = $2
+    AND speaker_id = $3
+RETURNING
+    *;
