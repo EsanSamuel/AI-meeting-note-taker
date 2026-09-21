@@ -30,6 +30,7 @@ type Querier interface {
 	GetMeetingActionItem(ctx context.Context, id pgtype.UUID) (MeetingActionItem, error)
 	GetMeetingDecision(ctx context.Context, id pgtype.UUID) (MeetingDecision, error)
 	GetTranscriptSegment(ctx context.Context, id pgtype.UUID) (TranscriptSegment, error)
+	GetTranscriptVector(ctx context.Context, meetingID pgtype.UUID) ([]TranscriptChunk, error)
 	ListIncompleteActionItems(ctx context.Context, meetingID pgtype.UUID) ([]MeetingActionItem, error)
 	ListMeetingActionItems(ctx context.Context, meetingID pgtype.UUID) ([]MeetingActionItem, error)
 	ListMeetingDecisions(ctx context.Context, meetingID pgtype.UUID) ([]MeetingDecision, error)

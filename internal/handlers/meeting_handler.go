@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -66,6 +67,33 @@ func (h *MeetingHandler) GetMeeting(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, meeting)
+}
+
+func (h *MeetingHandler) ServeMeetingAudio(c *gin.Context) {
+	id, ok := parseUUID(c, "id")
+	if !ok {
+		return
+	}
+
+	meeting, err := h.svc.GetMeeting(c.Request.Context(), id)
+	if err != nil {
+		respondNotFoundOrError(c, err)
+		return
+	}
+	if meeting.AudioPath == "" {
+		c.JSON(http.StatusNotFound, gin.H{"error": "meeting audio not found"})
+		return
+	}
+	if _, err := os.Stat(meeting.AudioPath); err != nil {
+		if os.IsNotExist(err) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "meeting audio file not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.File(meeting.AudioPath)
 }
 
 func (h *MeetingHandler) ListMeetings(c *gin.Context) {

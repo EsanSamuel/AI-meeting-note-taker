@@ -40,6 +40,40 @@ func (q *Queries) CreateTranscriptVectorEmbedding(ctx context.Context, arg Creat
 	return i, err
 }
 
+const getTranscriptVector = `-- name: GetTranscriptVector :many
+SELECT
+    id, meeting_id, chunk, embedding
+FROM
+    transcript_chunk
+WHERE
+    meeting_id = $1
+`
+
+func (q *Queries) GetTranscriptVector(ctx context.Context, meetingID pgtype.UUID) ([]TranscriptChunk, error) {
+	rows, err := q.db.Query(ctx, getTranscriptVector, meetingID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TranscriptChunk{}
+	for rows.Next() {
+		var i TranscriptChunk
+		if err := rows.Scan(
+			&i.ID,
+			&i.MeetingID,
+			&i.Chunk,
+			&i.Embedding,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const searchTranscriptChunk = `-- name: SearchTranscriptChunk :many
 SELECT
     id,

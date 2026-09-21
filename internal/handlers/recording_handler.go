@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"example.com/internal/diarization"
@@ -159,13 +158,17 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 		return
 	}
 
+	var summaries []string
+
 	for i, analysis := range summarizationResult {
 		println("Summary for Chunk", i+1)
 		println("Summary:", analysis.Summary)
 		println("Action Items:", analysis.ActionItems)
 		println("Decisions:", analysis.Decisions)
 
-		err = handler.meetings.AddMeetingSummary(c.Request.Context(), meetingID, analysis.Summary)
+		if analysis.Summary != "" {
+			summaries = append(summaries, analysis.Summary)
+		}
 
 		for _, decision := range analysis.Decisions {
 			if _, err := handler.meetings.CreateMeetingDecision(c.Request.Context(), repository.MeetingDecision{
@@ -195,7 +198,10 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 		}
 	}
 
-	if err := handler.meetings.AddSummary(c.Request.Context(), meeting.ID, strings.Join(summaryTexts(summarizationResult), " ")); err != nil {
+	summary, err := handler.transcription.SummaryAllSummaryChunks(summaries)
+	fmt.Println("Final summary:", summary)
+
+	if err := handler.meetings.AddSummary(c.Request.Context(), meeting.ID, summary); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("saving meeting summary: %v", err)})
 		return
 	}

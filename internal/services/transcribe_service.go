@@ -133,6 +133,7 @@ type TranscribeService interface {
 	ChunkTranscript(transcripts []MergedSegment, maxDuration float64, meetingID uuid.UUID) []TranscriptChunk
 	SummarizeTranscripts(transcriptChunks []TranscriptChunk, audioID string, meetingID uuid.UUID) ([]MeetingAnalysis, error)
 	UpdateSpeakers(ctx context.Context, meetingID uuid.UUID, speakers map[string]string) error
+	SummaryAllSummaryChunks(summaries []string) (string, error)
 }
 
 type transcribeService struct {
@@ -425,6 +426,96 @@ Transcript: %v`, formattedChunks)
 	return analyses, nil
 }
 
+func (s *transcribeService) SummaryAllSummaryChunks(summaries []string) (string, error) {
+	combinedSummaries := strings.Join(summaries, "\n\n---\n\n")
+	prompt := fmt.Sprintf(`
+You are an expert meeting-summary synthesizer.
+
+You will receive multiple summaries generated from different chunks of the same meeting. Your task is to combine them into ONE detailed, coherent, and accurate final meeting summary.
+
+IMPORTANT:
+- The summaries are chronological chunks of the same meeting.
+- Do NOT treat each chunk as a separate meeting.
+- Combine related information across chunks.
+- Remove repetitive information.
+- Preserve important details, decisions, action items, questions, conclusions, and context.
+- Do not invent information that is not present in the provided summaries.
+- If a piece of information is uncertain or incomplete, do not guess.
+- Preserve speaker names when they are provided.
+- If speaker names are unavailable, use the speaker identifiers provided.
+- When the same topic appears in multiple chunks, merge the information into one coherent section.
+- Do not simply concatenate the summaries.
+- Produce a natural, readable summary that represents the meeting as a whole.
+
+Your final summary should include the following sections:
+
+1. OVERVIEW
+Provide a concise but informative description of what the entire meeting was about, including its main purpose and outcome.
+
+2. DETAILED DISCUSSION
+Describe the major topics discussed during the meeting in logical order rather than simply listing the chunk summaries.
+For each important topic:
+- Explain what was discussed.
+- Include relevant details.
+- Identify who raised or discussed the topic when that information is available.
+- Include important arguments, explanations, concerns, or suggestions.
+
+3. KEY DECISIONS
+List the decisions or agreements reached during the meeting.
+For each decision:
+- State the decision clearly.
+- Identify who was involved when known.
+- Include relevant context.
+
+4. ACTION ITEMS
+Identify concrete tasks that need to be completed after the meeting.
+For each action item, include:
+- Task
+- Assigned person, if explicitly stated
+- Deadline, if explicitly stated
+- Status, if it can be determined
+
+Do not invent an assignee or deadline.
+
+5. IMPORTANT POINTS
+List important facts, requirements, concerns, observations, or conclusions that should not be forgotten.
+
+6. OPEN QUESTIONS
+List questions or issues that remain unresolved at the end of the meeting.
+If there are no unresolved questions, state that clearly.
+
+7. FINAL OUTCOME
+Provide a concise conclusion describing what was ultimately agreed upon, decided, or accomplished during the meeting.
+
+QUALITY REQUIREMENTS:
+- Be detailed but avoid unnecessary repetition.
+- Maintain the chronological and logical relationship between topics.
+- Distinguish between proposals and actual decisions.
+- Distinguish between discussed action items and completed actions.
+- Do not turn casual comments into formal decisions.
+- Do not create action items unless the summaries indicate that a task exists.
+- Do not attribute statements to a speaker unless the speaker is identified in the input.
+- Do not add information from your general knowledge.
+- Do not mention that you are combining summaries.
+- Write as if you directly analyzed the entire meeting transcript.
+
+
+INPUT:
+The following are summaries of consecutive chunks from the same meeting:
+
+%s
+
+OUTPUT:
+Return only the final meeting summary using the sections described above.
+`, combinedSummaries)
+
+	summary, err := config.Ai(prompt)
+	if err != nil {
+		return "", fmt.Errorf("failed to summary all summary chunks into one: %w", err)
+	}
+	return summary, nil
+}
+
 func (s *transcribeService) UpdateSpeakers(ctx context.Context, meetingID uuid.UUID, speakers map[string]string) error {
 	// Update db file
 	for speakerID, speakerName := range speakers {
@@ -467,3 +558,8 @@ func (s *transcribeService) UpdateSpeakers(ctx context.Context, meetingID uuid.U
 
 	return nil
 }
+
+/*func (s *transcribeService) ChatWithTranscript(ctx context.Context, meetingID uuid.UUID, query string) (string, error) {
+
+return "",nil
+}*/

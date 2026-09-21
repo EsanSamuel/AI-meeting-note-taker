@@ -1,0 +1,17 @@
+[
+  {
+    "summary": "SPEAKER_00 and SPEAKER_01 exchange pleasantries and SPEAKER_01 mentions taking a walk because of the nice weather.",
+    "decisions": [],
+    "action_items": []
+  },
+  {
+    "summary": "SPEAKER_00 invites SPEAKER_01 to join them for coffee, and SPEAKER_01 agrees to go.",
+    "decisions": [
+      {
+        "text": "SPEAKER_00 and SPEAKER_01 decided to go get coffee together.",
+        "timestamp": 21.9
+      }
+    ],
+    "action_items": []
+  }
+]

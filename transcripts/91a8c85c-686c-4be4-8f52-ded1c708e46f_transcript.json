@@ -1,0 +1,26 @@
+[
+  {
+    "start": 0,
+    "end": 10.18,
+    "speaker": "SPEAKER_00",
+    "text": " [BLANK_AUDIO]"
+  },
+  {
+    "start": 10.18,
+    "end": 20.18,
+    "speaker": "SPEAKER_01",
+    "text": " [BLANK_AUDIO]"
+  },
+  {
+    "start": 20.18,
+    "end": 29.22,
+    "speaker": "SPEAKER_00",
+    "text": " [BLANK_AUDIO]"
+  },
+  {
+    "start": 29.22,
+    "end": 35.54,
+    "speaker": "SPEAKER_00",
+    "text": " [BLANK_AUDIO]"
+  }
+]

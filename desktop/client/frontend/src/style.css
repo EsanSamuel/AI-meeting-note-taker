@@ -1,13 +1,13 @@
 html { background: #f7f8f4; color: #18251f; }
 
-body { margin: 0; font-family: "Trebuchet MS", "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+body { margin: 0; font-family: "Nunito", "Segoe UI", sans-serif; font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 
 @font-face {
     font-family: "Nunito";
     font-style: normal;
     font-weight: 400;
-    src: local(""),
-    url("assets/fonts/nunito-v16-latin-regular.woff2") format("woff2");
+    font-display: swap;
+    src: local("Nunito"), url("assets/fonts/nunito-v16-latin-regular.woff2") format("woff2");
 }
 
 #root { min-height: 100vh; }

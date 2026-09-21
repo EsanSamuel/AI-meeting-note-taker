@@ -29,6 +29,7 @@ func New(recordingHandler *handlers.RecordingHandler, meetingHandler *handlers.M
 	api.POST("/meetings", meetingHandler.CreateMeeting)
 	api.GET("/meetings", meetingHandler.ListMeetings)
 	api.GET("/meetings/:id", meetingHandler.GetMeeting)
+	api.GET("/meetings/:id/audio", meetingHandler.ServeMeetingAudio)
 	api.PUT("/meetings/:id", meetingHandler.UpdateMeeting)
 	api.DELETE("/meetings/:id", meetingHandler.DeleteMeeting)
 

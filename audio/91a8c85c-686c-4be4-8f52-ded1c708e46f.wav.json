@@ -1,0 +1,76 @@
+{
+	"systeminfo": "WHISPER : VITISAI = 0 | COREML = 0 | OPENVINO = 0 | CPU : OPENMP = 1 | REPACK = 1 | ",
+	"model": {
+		"type": "tiny",
+		"multilingual": false,
+		"vocab": 51864,
+		"audio": {
+			"ctx": 1500,
+			"state": 384,
+			"head": 6,
+			"layer": 4
+		},
+		"text": {
+			"ctx": 448,
+			"state": 384,
+			"head": 6,
+			"layer": 4
+		},
+		"mels": 80,
+		"ftype": 1
+	},
+	"params": {
+		"model": "whisper/whisper.cpp/ggml-tiny.en.bin",
+		"language": "en",
+		"translate": false
+	},
+	"result": {
+		"language": "en"
+	},
+	"transcription": [
+		{
+			"timestamps": {
+				"from": "00:00:00,000",
+				"to": "00:00:10,180"
+			},
+			"offsets": {
+				"from": 0,
+				"to": 10180
+			},
+			"text": " [BLANK_AUDIO]"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:10,180",
+				"to": "00:00:20,180"
+			},
+			"offsets": {
+				"from": 10180,
+				"to": 20180
+			},
+			"text": " [BLANK_AUDIO]"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:20,180",
+				"to": "00:00:29,220"
+			},
+			"offsets": {
+				"from": 20180,
+				"to": 29220
+			},
+			"text": " [BLANK_AUDIO]"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:29,220",
+				"to": "00:00:35,540"
+			},
+			"offsets": {
+				"from": 29220,
+				"to": 35540
+			},
+			"text": " [BLANK_AUDIO]"
+		}
+	]
+}

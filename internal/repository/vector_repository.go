@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"example.com/internal/db/sqlc"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	pgvector_go "github.com/pgvector/pgvector-go"
@@ -38,8 +39,16 @@ type SearchTranscriptChunkResult struct {
 	Distance  float64     `json:"distance"`
 }
 
+type TranscriptVector struct {
+	ID    pgtype.UUID `json:"id"`
+    MeetingID  pgtype.UUID `json:"meeting_id"`
+	Chunk string      `json:"chunk"`
+	Embedding pgvector_go.Vector `json:"embedding"`
+}
+
 type VectorRepository interface {
 	CreateVector(ctx context.Context, v CreateTranscriptVectorEmbeddingParams) (VectorResponse, error)
+	GetTranscriptVector(ctx context.Context, meetingID uuid.UUID) ([]TranscriptVector, error)
 	SearchTranscriptChunk(ctx context.Context, v SearchTranscriptChunkParams) ([]SearchTranscriptChunkResult, error)
 }
 
@@ -64,6 +73,25 @@ func (r *vectorRepository) CreateVector(ctx context.Context, v CreateTranscriptV
 		Chunk:     row.Chunk,
 		Embedding: row.Embedding,
 	}, nil
+}
+
+func (r *vectorRepository) GetTranscriptVector(ctx context.Context, meetingID uuid.UUID) ([]TranscriptVector, error) {
+	rows, err := r.q.GetTranscriptVector(ctx, pgtype.UUID{Bytes: meetingID, Valid: true})
+	if err != nil {
+		return nil, err
+	}
+
+	vectors := make([]TranscriptVector, 0, len(rows))
+	for _, row := range rows {
+		vectors = append(vectors, TranscriptVector{
+			ID:        row.ID,
+			MeetingID: row.MeetingID,
+			Chunk:     row.Chunk,
+			Embedding: row.Embedding,
+		})
+	}
+
+	return vectors, nil
 }
 
 func (r *vectorRepository) SearchTranscriptChunk(ctx context.Context, v SearchTranscriptChunkParams) ([]SearchTranscriptChunkResult, error) {

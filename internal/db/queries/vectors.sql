@@ -7,6 +7,14 @@ VALUES
 RETURNING
     *;
 
+-- name: GetTranscriptVector :many
+SELECT
+    *
+FROM
+    transcript_chunk
+WHERE
+    meeting_id = $1;
+
 -- name: SearchTranscriptChunk :many
 SELECT
     id,

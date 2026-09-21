@@ -4,6 +4,10 @@ export function getApiBaseUrl() {
     return localStorage.getItem('afterword.apiBaseUrl') || DEFAULT_API_URL;
 }
 
+export function getMeetingAudioUrl(meetingId) {
+    return `${getApiBaseUrl().replace(/\/$/, '')}/api/v1/meetings/${meetingId}/audio`;
+}
+
 export async function request(path, options = {}) {
     const baseUrl = getApiBaseUrl().replace(/\/$/, '');
     const response = await fetch(`${baseUrl}${path}`, options);
