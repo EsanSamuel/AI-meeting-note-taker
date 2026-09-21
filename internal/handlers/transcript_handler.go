@@ -146,7 +146,7 @@ func (h *TranscriptHandler) DeleteTranscriptSegmentsByMeeting(c *gin.Context) {
 }
 
 func (h *TranscriptHandler) UpdateSpeakers(c *gin.Context) {
-	meetingID, ok := parseUUID(c, "meeting_id")
+	meetingID, ok := parseUUID(c, "id")
 	if !ok {
 		return
 	}

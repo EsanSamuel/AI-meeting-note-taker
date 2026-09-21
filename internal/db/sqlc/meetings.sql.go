@@ -25,7 +25,7 @@ INSERT INTO
 VALUES
     ($1, $2, $3, $4, $5, $6, $7)
 RETURNING
-    id, title, started_at, ended_at, duration_seconds, audio_path, video_path, created_at, updated_at
+    id, title, started_at, ended_at, duration_seconds, audio_path, video_path, created_at, updated_at, summary
 `
 
 type CreateMeetingParams struct {
@@ -60,6 +60,7 @@ func (q *Queries) CreateMeeting(ctx context.Context, arg CreateMeetingParams) (M
 		&i.VideoPath,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Summary,
 	)
 	return i, err
 }
@@ -185,7 +186,7 @@ func (q *Queries) DeleteMeetingDecisions(ctx context.Context, meetingID pgtype.U
 
 const getMeeting = `-- name: GetMeeting :one
 SELECT
-    id, title, started_at, ended_at, duration_seconds, audio_path, video_path, created_at, updated_at
+    id, title, started_at, ended_at, duration_seconds, audio_path, video_path, created_at, updated_at, summary
 FROM
     meetings
 WHERE
@@ -207,6 +208,7 @@ func (q *Queries) GetMeeting(ctx context.Context, id pgtype.UUID) (Meeting, erro
 		&i.VideoPath,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Summary,
 	)
 	return i, err
 }
@@ -379,7 +381,7 @@ func (q *Queries) ListMeetingDecisions(ctx context.Context, meetingID pgtype.UUI
 
 const listMeetings = `-- name: ListMeetings :many
 SELECT
-    id, title, started_at, ended_at, duration_seconds, audio_path, video_path, created_at, updated_at
+    id, title, started_at, ended_at, duration_seconds, audio_path, video_path, created_at, updated_at, summary
 FROM
     meetings
 ORDER BY
@@ -405,6 +407,7 @@ func (q *Queries) ListMeetings(ctx context.Context) ([]Meeting, error) {
 			&i.VideoPath,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Summary,
 		); err != nil {
 			return nil, err
 		}
@@ -418,7 +421,7 @@ func (q *Queries) ListMeetings(ctx context.Context) ([]Meeting, error) {
 
 const listMeetingsWithDecisionsAndActionItems = `-- name: ListMeetingsWithDecisionsAndActionItems :many
 SELECT
-    meetings.id, title, started_at, ended_at, duration_seconds, audio_path, video_path, meetings.created_at, updated_at, meeting_decisions.id, meeting_decisions.meeting_id, decision, meeting_decisions.timestamp_seconds, meeting_decisions.created_at, meeting_action_items.id, meeting_action_items.meeting_id, task, assignee, meeting_action_items.timestamp_seconds, completed, meeting_action_items.created_at
+    meetings.id, title, started_at, ended_at, duration_seconds, audio_path, video_path, meetings.created_at, updated_at, summary, meeting_decisions.id, meeting_decisions.meeting_id, decision, meeting_decisions.timestamp_seconds, meeting_decisions.created_at, meeting_action_items.id, meeting_action_items.meeting_id, task, assignee, meeting_action_items.timestamp_seconds, completed, meeting_action_items.created_at
 FROM
     meetings
     JOIN meeting_decisions ON meetings.id = meeting_decisions.meeting_id
@@ -437,6 +440,7 @@ type ListMeetingsWithDecisionsAndActionItemsRow struct {
 	VideoPath          pgtype.Text        `json:"video_path"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	Summary            pgtype.Text        `json:"summary"`
 	ID_2               pgtype.UUID        `json:"id_2"`
 	MeetingID          pgtype.UUID        `json:"meeting_id"`
 	Decision           string             `json:"decision"`
@@ -470,6 +474,7 @@ func (q *Queries) ListMeetingsWithDecisionsAndActionItems(ctx context.Context) (
 			&i.VideoPath,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Summary,
 			&i.ID_2,
 			&i.MeetingID,
 			&i.Decision,
@@ -556,7 +561,7 @@ SET
 WHERE
     id = $1
 RETURNING
-    id, title, started_at, ended_at, duration_seconds, audio_path, video_path, created_at, updated_at
+    id, title, started_at, ended_at, duration_seconds, audio_path, video_path, created_at, updated_at, summary
 `
 
 type UpdateMeetingParams struct {
@@ -590,6 +595,7 @@ func (q *Queries) UpdateMeeting(ctx context.Context, arg UpdateMeetingParams) (M
 		&i.VideoPath,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Summary,
 	)
 	return i, err
 }
@@ -632,6 +638,39 @@ func (q *Queries) UpdateMeetingActionItem(ctx context.Context, arg UpdateMeeting
 		&i.TimestampSeconds,
 		&i.Completed,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const updateMeetingSummary = `-- name: UpdateMeetingSummary :one
+UPDATE meetings
+SET
+    summary = $2
+WHERE
+    id = $1
+RETURNING
+    id, title, started_at, ended_at, duration_seconds, audio_path, video_path, created_at, updated_at, summary
+`
+
+type UpdateMeetingSummaryParams struct {
+	ID      pgtype.UUID `json:"id"`
+	Summary pgtype.Text `json:"summary"`
+}
+
+func (q *Queries) UpdateMeetingSummary(ctx context.Context, arg UpdateMeetingSummaryParams) (Meeting, error) {
+	row := q.db.QueryRow(ctx, updateMeetingSummary, arg.ID, arg.Summary)
+	var i Meeting
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.DurationSeconds,
+		&i.AudioPath,
+		&i.VideoPath,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Summary,
 	)
 	return i, err
 }

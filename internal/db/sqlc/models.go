@@ -19,6 +19,7 @@ type Meeting struct {
 	VideoPath       pgtype.Text        `json:"video_path"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	Summary         pgtype.Text        `json:"summary"`
 }
 
 type MeetingActionItem struct {

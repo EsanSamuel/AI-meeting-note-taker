@@ -13,6 +13,7 @@ import (
 type Meeting struct {
 	ID              uuid.UUID `json:"id"`
 	Title           string    `json:"title"`
+	Summary         string    `json:"summary"`
 	StartedAt       time.Time `json:"started_at"`
 	EndedAt         time.Time `json:"ended_at"`
 	DurationSeconds float64   `json:"duration_seconds"`
@@ -47,6 +48,7 @@ type MeetingRepository interface {
 	ListMeetings(ctx context.Context) ([]Meeting, error)
 	UpdateMeeting(ctx context.Context, m Meeting) (Meeting, error)
 	DeleteMeeting(ctx context.Context, id uuid.UUID) error
+	AddSummary(ctx context.Context, id uuid.UUID, summary string) error
 
 	// Decisions
 	CreateMeetingDecision(ctx context.Context, d MeetingDecision) (MeetingDecision, error)
@@ -148,6 +150,17 @@ func (r *meetingRepository) CreateMeetingDecision(ctx context.Context, d Meeting
 		return MeetingDecision{}, err
 	}
 	return decisionFromRow(row), nil
+}
+
+func (r *meetingRepository) AddSummary(ctx context.Context, id uuid.UUID, summary string) error {
+	_, err := r.q.UpdateMeetingSummary(ctx, sqlc.UpdateMeetingSummaryParams{
+		ID:      pgtype.UUID{Bytes: id, Valid: true},
+		Summary: pgtype.Text{String: summary, Valid: summary != ""},
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *meetingRepository) GetMeetingDecision(ctx context.Context, id uuid.UUID) (MeetingDecision, error) {
@@ -269,6 +282,7 @@ func meetingFromRow(row sqlc.Meeting) Meeting {
 	return Meeting{
 		ID:              uuid.UUID(row.ID.Bytes),
 		Title:           row.Title,
+		Summary:         row.Summary.String,
 		StartedAt:       row.StartedAt.Time,
 		EndedAt:         row.EndedAt.Time,
 		DurationSeconds: row.DurationSeconds.Float64,

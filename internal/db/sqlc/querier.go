@@ -41,6 +41,7 @@ type Querier interface {
 	SearchTranscriptChunk(ctx context.Context, arg SearchTranscriptChunkParams) ([]SearchTranscriptChunkRow, error)
 	UpdateMeeting(ctx context.Context, arg UpdateMeetingParams) (Meeting, error)
 	UpdateMeetingActionItem(ctx context.Context, arg UpdateMeetingActionItemParams) (MeetingActionItem, error)
+	UpdateMeetingSummary(ctx context.Context, arg UpdateMeetingSummaryParams) (Meeting, error)
 	UpdateSpeakers(ctx context.Context, arg UpdateSpeakersParams) ([]TranscriptSegment, error)
 	UpdateTranscriptSegment(ctx context.Context, arg UpdateTranscriptSegmentParams) (TranscriptSegment, error)
 }

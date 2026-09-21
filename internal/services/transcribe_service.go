@@ -435,7 +435,9 @@ func (s *transcribeService) UpdateSpeakers(ctx context.Context, meetingID uuid.U
 	}
 
 	// Local file update
-	meetingFilePath := fmt.Sprintf("%s_transcript.json", meetingID)
+	meetingFile := fmt.Sprintf("%s_transcript.json", meetingID)
+
+	meetingFilePath := filepath.Join("transcripts", meetingFile)
 
 	data, err := os.ReadFile(meetingFilePath)
 	if err != nil {

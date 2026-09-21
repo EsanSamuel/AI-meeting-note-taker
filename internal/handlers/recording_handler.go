@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"example.com/internal/diarization"
@@ -164,6 +165,8 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 		println("Action Items:", analysis.ActionItems)
 		println("Decisions:", analysis.Decisions)
 
+		err = handler.meetings.AddMeetingSummary(c.Request.Context(), meetingID, analysis.Summary)
+
 		for _, decision := range analysis.Decisions {
 			if _, err := handler.meetings.CreateMeetingDecision(c.Request.Context(), repository.MeetingDecision{
 				MeetingID:        meeting.ID,
@@ -192,6 +195,11 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 		}
 	}
 
+	if err := handler.meetings.AddSummary(c.Request.Context(), meeting.ID, strings.Join(summaryTexts(summarizationResult), " ")); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("saving meeting summary: %v", err)})
+		return
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
 		"id":                   recording.ID,
 		"meeting_id":           meeting.ID,
@@ -202,4 +210,14 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 		"merged_segments":      merged_segments,
 		"whisper_inference":    whisperInferenceResult,
 	})
+}
+
+func summaryTexts(analyses []services.MeetingAnalysis) []string {
+	texts := make([]string, 0, len(analyses))
+	for _, analysis := range analyses {
+		if analysis.Summary != "" {
+			texts = append(texts, analysis.Summary)
+		}
+	}
+	return texts
 }

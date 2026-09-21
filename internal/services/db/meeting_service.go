@@ -38,6 +38,10 @@ func (s *MeetingService) DeleteMeeting(ctx context.Context, id uuid.UUID) error 
 	return s.repo.DeleteMeeting(ctx, id)
 }
 
+func (s *MeetingService) AddSummary(ctx context.Context, id uuid.UUID, summary string) error {
+	return s.repo.AddSummary(ctx, id, summary)
+}
+
 // ---- Decisions ----
 
 func (s *MeetingService) CreateMeetingDecision(ctx context.Context, d repository.MeetingDecision) (repository.MeetingDecision, error) {
@@ -58,6 +62,10 @@ func (s *MeetingService) DeleteMeetingDecision(ctx context.Context, id uuid.UUID
 
 func (s *MeetingService) DeleteMeetingDecisions(ctx context.Context, meetingID uuid.UUID) error {
 	return s.repo.DeleteMeetingDecisions(ctx, meetingID)
+}
+
+func (s *MeetingService) AddMeetingSummary(ctx context.Context, id uuid.UUID, summary string) error {
+	return s.repo.AddSummary(ctx, id, summary)
 }
 
 // ---- Action items ----

@@ -58,6 +58,15 @@ WHERE
 RETURNING
     *;
 
+-- name: UpdateMeetingSummary :one
+UPDATE meetings
+SET
+    summary = $2
+WHERE
+    id = $1
+RETURNING
+    *;
+
 -- name: DeleteMeeting :exec
 DELETE FROM meetings
 WHERE
