@@ -1,0 +1,67 @@
+[
+  {
+    "summary": "SPEAKER_03 opened the morning daily meeting, stating the goal to spend 20 minutes reviewing everyone's tasks to clarify team priorities, and asked Caitlin to start.",
+    "decisions": [],
+    "action_items": [
+      {
+        "task": "Start running through her tasks and priorities.",
+        "assignee": "Caitlin",
+        "timestamp": 9.64
+      }
+    ]
+  },
+  {
+    "summary": "SPEAKER_01 shared their priorities for today and tomorrow, which include website updates and marketing strategy setting, and noted a sales meeting scheduled for tomorrow.",
+    "decisions": [],
+    "action_items": []
+  },
+  {
+    "summary": "SPEAKER_00 shares plans to focus on monthly financial reporting and requests that anyone with outstanding expenses submit them.",
+    "decisions": [],
+    "action_items": [
+      {
+        "task": "Submit outstanding expenses",
+        "assignee": null,
+        "timestamp": 32.92
+      }
+    ]
+  },
+  {
+    "summary": "SPEAKER_00 requests that certain items be submitted by lunchtime and asks for an update. SPEAKER_02 explains that they need to focus on completing a large backlog of editing work over the next couple of days due to being on holiday the previous week.",
+    "decisions": [],
+    "action_items": [
+      {
+        "task": "Get the requested items to SPEAKER_00 by lunchtime at the latest",
+        "assignee": "Aaron",
+        "timestamp": 38.26
+      },
+      {
+        "task": "Complete a big backlog of editing",
+        "assignee": "SPEAKER_02",
+        "timestamp": 43.94
+      }
+    ]
+  },
+  {
+    "summary": "SPEAKER_02 offered assistance if needed. SPEAKER_03 mentioned looking forward to discussing a holiday and stated they would be setting the annual meeting agenda today.",
+    "decisions": [],
+    "action_items": [
+      {
+        "task": "Set the annual meeting agenda today",
+        "assignee": "SPEAKER_03",
+        "timestamp": 61.68
+      }
+    ]
+  },
+  {
+    "summary": "SPEAKER_03 concluded the meeting by stating they will send a draft agenda item to everyone later in the afternoon.",
+    "decisions": [],
+    "action_items": [
+      {
+        "task": "Send a draft agenda item to everyone in the late afternoon.",
+        "assignee": "SPEAKER_03",
+        "timestamp": 65.32
+      }
+    ]
+  }
+]

@@ -265,30 +265,46 @@ func (handler *RecordingHandler) GenerateAIResults(c *gin.Context) {
 			summaries = append(summaries, analysis.Summary)
 		}
 
-		for _, decision := range analysis.Decisions {
-			if _, err := handler.meetings.CreateMeetingDecision(c.Request.Context(), repository.MeetingDecision{
-				MeetingID:        meetingID,
-				Decision:         decision.Text,
-				TimestampSeconds: decision.Timestamp,
-			}); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("saving meeting decision: %v", err)})
-				return
+		decision_results, err := handler.meetings.ListMeetingDecisions(c.Request.Context(), meetingID)
+		if err != nil {
+			fmt.Printf("Error getting meeting decision results %s", err)
+		}
+		if len(decision_results) > 0 {
+			fmt.Println("Decision results is already in db")
+		} else {
+			for _, decision := range analysis.Decisions {
+				if _, err := handler.meetings.CreateMeetingDecision(c.Request.Context(), repository.MeetingDecision{
+					MeetingID:        meetingID,
+					Decision:         decision.Text,
+					TimestampSeconds: decision.Timestamp,
+				}); err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("saving meeting decision: %v", err)})
+					return
+				}
 			}
 		}
 
-		for _, actionItem := range analysis.ActionItems {
-			assignee := ""
-			if actionItem.Assignee != nil {
-				assignee = *actionItem.Assignee
-			}
-			if _, err := handler.meetings.CreateMeetingActionItem(c.Request.Context(), repository.MeetingActionItem{
-				MeetingID:        meetingID,
-				Task:             actionItem.Task,
-				Assignee:         assignee,
-				TimestampSeconds: actionItem.Timestamp,
-			}); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("saving meeting action item: %v", err)})
-				return
+		actionItem_results, err := handler.meetings.ListMeetingActionItems(c.Request.Context(), meetingID)
+		if err != nil {
+			fmt.Printf("Error getting action items results %s", err)
+		}
+		if len(actionItem_results) > 0 {
+			fmt.Println("Action item results is already in db")
+		} else {
+			for _, actionItem := range analysis.ActionItems {
+				assignee := ""
+				if actionItem.Assignee != nil {
+					assignee = *actionItem.Assignee
+				}
+				if _, err := handler.meetings.CreateMeetingActionItem(c.Request.Context(), repository.MeetingActionItem{
+					MeetingID:        meetingID,
+					Task:             actionItem.Task,
+					Assignee:         assignee,
+					TimestampSeconds: actionItem.Timestamp,
+				}); err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("saving meeting action item: %v", err)})
+					return
+				}
 			}
 		}
 	}

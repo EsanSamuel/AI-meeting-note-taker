@@ -1,0 +1,197 @@
+{
+	"systeminfo": "WHISPER : VITISAI = 0 | COREML = 0 | OPENVINO = 0 | CPU : OPENMP = 1 | REPACK = 1 | ",
+	"model": {
+		"type": "tiny",
+		"multilingual": false,
+		"vocab": 51864,
+		"audio": {
+			"ctx": 1500,
+			"state": 384,
+			"head": 6,
+			"layer": 4
+		},
+		"text": {
+			"ctx": 448,
+			"state": 384,
+			"head": 6,
+			"layer": 4
+		},
+		"mels": 80,
+		"ftype": 1
+	},
+	"params": {
+		"model": "whisper/whisper.cpp/ggml-tiny.en.bin",
+		"language": "en",
+		"translate": false
+	},
+	"result": {
+		"language": "en"
+	},
+	"transcription": [
+		{
+			"timestamps": {
+				"from": "00:00:00,000",
+				"to": "00:00:04,360"
+			},
+			"offsets": {
+				"from": 0,
+				"to": 4360
+			},
+			"text": " morning everyone thanks for joining our day cool this morning I'd like to"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:04,360",
+				"to": "00:00:09,640"
+			},
+			"offsets": {
+				"from": 4360,
+				"to": 9640
+			},
+			"text": " just spend 20 minutes running through everyone's tasks so that we clear as a"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:09,640",
+				"to": "00:00:14,680"
+			},
+			"offsets": {
+				"from": 9640,
+				"to": 14680
+			},
+			"text": " team on our priorities so Caitlin perhaps you could make a start please yeah sure"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:14,680",
+				"to": "00:00:20,920"
+			},
+			"offsets": {
+				"from": 14680,
+				"to": 20920
+			},
+			"text": " my priorities for today and tomorrow are website updates and marketing"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:20,920",
+				"to": "00:00:26,560"
+			},
+			"offsets": {
+				"from": 20920,
+				"to": 26560
+			},
+			"text": " strategy setting we also have a sales meeting tomorrow warning perfect thank"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:26,560",
+				"to": "00:00:32,920"
+			},
+			"offsets": {
+				"from": 26560,
+				"to": 32920
+			},
+			"text": " Caitlin and how about you Aaron morning I'm going to be focusing on monthly"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:32,920",
+				"to": "00:00:38,260"
+			},
+			"offsets": {
+				"from": 32920,
+				"to": 38260
+			},
+			"text": " financial reporting today if anyone still has expenses to submit then please"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:38,260",
+				"to": "00:00:43,940"
+			},
+			"offsets": {
+				"from": 38260,
+				"to": 43940
+			},
+			"text": " get them to me by lunchtime at the latest thanks Aaron County how about you"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:43,940",
+				"to": "00:00:48,200"
+			},
+			"offsets": {
+				"from": 43940,
+				"to": 48200
+			},
+			"text": " hi everyone I need to complete a big backlog of editing in the next couple of"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:48,200",
+				"to": "00:00:52,960"
+			},
+			"offsets": {
+				"from": 48200,
+				"to": 52960
+			},
+			"text": " days given that I was on holiday last week I'm going to get my head down"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:52,960",
+				"to": "00:00:57,760"
+			},
+			"offsets": {
+				"from": 52960,
+				"to": 57760
+			},
+			"text": " focus but please send me a message if I can help with anything perfect thanks"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:57,760",
+				"to": "00:01:01,680"
+			},
+			"offsets": {
+				"from": 57760,
+				"to": 61680
+			},
+			"text": " Kami and looking forward to chatting about your holiday so for me I'm going to be"
+		},
+		{
+			"timestamps": {
+				"from": "00:01:01,680",
+				"to": "00:01:05,320"
+			},
+			"offsets": {
+				"from": 61680,
+				"to": 65320
+			},
+			"text": " setting the annual meeting for agenda today if anyone would like to"
+		},
+		{
+			"timestamps": {
+				"from": "00:01:05,320",
+				"to": "00:01:10,580"
+			},
+			"offsets": {
+				"from": 65320,
+				"to": 70580
+			},
+			"text": " suggest an agenda item then I'll be sending a draft you all late afternoon so"
+		},
+		{
+			"timestamps": {
+				"from": "00:01:10,580",
+				"to": "00:01:16,360"
+			},
+			"offsets": {
+				"from": 70580,
+				"to": 76360
+			},
+			"text": " good to see you all and hope you have a productive day bye bye"
+		}
+	]
+}
