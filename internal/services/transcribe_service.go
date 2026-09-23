@@ -83,10 +83,11 @@ type DiarizationSegment struct {
 }
 
 type MergedSegment struct {
-	Start   float64 `json:"start"`
-	End     float64 `json:"end"`
-	Speaker string  `json:"speaker"`
-	Text    string  `json:"text"`
+	Start     float64 `json:"start"`
+	End       float64 `json:"end"`
+	SpeakerID string  `json:"speaker_id"`
+	Speaker   string  `json:"speaker"`
+	Text      string  `json:"text"`
 }
 
 type UpdateTranscriptSegmentSpeaker struct {
@@ -135,6 +136,7 @@ type TranscribeService interface {
 	UpdateSpeakers(ctx context.Context, meetingID uuid.UUID, speakers map[string]string) error
 	SummaryAllSummaryChunks(summaries []string) (string, error)
 	ChatWithTranscript(ctx context.Context, meetingID uuid.UUID, query string) (string, error)
+	GenerateTranscriptFromLocalFile(ctx context.Context, meetingID uuid.UUID) ([]MergedSegment, error)
 }
 
 type transcribeService struct {
@@ -600,4 +602,21 @@ func (s *transcribeService) ChatWithTranscript(ctx context.Context, meetingID uu
 	}
 
 	return answer, nil
+}
+
+func (s *transcribeService) GenerateTranscriptFromLocalFile(ctx context.Context, meetingID uuid.UUID) ([]MergedSegment, error) {
+	meetingFile := fmt.Sprintf("%s_transcript.json", meetingID)
+	meetingFilePath := filepath.Join("transcripts", meetingFile)
+
+	data, err := os.ReadFile(meetingFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read transcript file: %v", err)
+	}
+	var transcriptFile []MergedSegment
+
+	if err := json.Unmarshal(data, &transcriptFile); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal transcript file: %w", err)
+	}
+
+	return transcriptFile, nil
 }

@@ -24,6 +24,7 @@ func New(recordingHandler *handlers.RecordingHandler, meetingHandler *handlers.M
 
 	// recording routes
 	api.POST("/recordings", recordingHandler.Create)
+	api.POST("/recordings/:id/generate-ai-results", recordingHandler.GenerateAIResults)
 
 	// meeting routes
 	api.POST("/meetings", meetingHandler.CreateMeeting)

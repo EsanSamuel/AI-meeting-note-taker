@@ -218,7 +218,7 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 	})
 }
 
-func summaryTexts(analyses []services.MeetingAnalysis) []string {
+func SummaryTexts(analyses []services.MeetingAnalysis) []string {
 	texts := make([]string, 0, len(analyses))
 	for _, analysis := range analyses {
 		if analysis.Summary != "" {
@@ -226,4 +226,79 @@ func summaryTexts(analyses []services.MeetingAnalysis) []string {
 		}
 	}
 	return texts
+}
+
+func (handler *RecordingHandler) GenerateAIResults(c *gin.Context) {
+	meetingID, ok := parseUUID(c, "id")
+	if !ok {
+		return
+	}
+
+	merged_segments, err := handler.transcription.GenerateTranscriptFromLocalFile(c.Request.Context(), meetingID)
+
+	chunks := handler.transcription.ChunkTranscript(merged_segments, 15.0, meetingID)
+	for i, chunk := range chunks {
+		println("Chunk", i+1)
+		println("Start:", chunk.Start)
+		println("End:", chunk.End)
+		println("Formatted Chunk:")
+		println(services.FormatChunk(chunk))
+	}
+
+	audioID := meetingID.String()
+
+	summarizationResult, err := handler.transcription.SummarizeTranscripts(chunks, audioID, meetingID)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("summarizing transcript: %v", err)})
+		return
+	}
+
+	var summaries []string
+
+	for i, analysis := range summarizationResult {
+		println("Summary for Chunk", i+1)
+		println("Summary:", analysis.Summary)
+		println("Action Items:", analysis.ActionItems)
+		println("Decisions:", analysis.Decisions)
+
+		if analysis.Summary != "" {
+			summaries = append(summaries, analysis.Summary)
+		}
+
+		for _, decision := range analysis.Decisions {
+			if _, err := handler.meetings.CreateMeetingDecision(c.Request.Context(), repository.MeetingDecision{
+				MeetingID:        meetingID,
+				Decision:         decision.Text,
+				TimestampSeconds: decision.Timestamp,
+			}); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("saving meeting decision: %v", err)})
+				return
+			}
+		}
+
+		for _, actionItem := range analysis.ActionItems {
+			assignee := ""
+			if actionItem.Assignee != nil {
+				assignee = *actionItem.Assignee
+			}
+			if _, err := handler.meetings.CreateMeetingActionItem(c.Request.Context(), repository.MeetingActionItem{
+				MeetingID:        meetingID,
+				Task:             actionItem.Task,
+				Assignee:         assignee,
+				TimestampSeconds: actionItem.Timestamp,
+			}); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("saving meeting action item: %v", err)})
+				return
+			}
+		}
+	}
+
+	summary, err := handler.transcription.SummaryAllSummaryChunks(summaries)
+	fmt.Println("Final summary:", summary)
+
+	if err := handler.meetings.AddSummary(c.Request.Context(), meetingID, summary); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("saving meeting summary: %v", err)})
+		return
+	}
+
 }

@@ -11,6 +11,7 @@ import (
 )
 
 type LlamaService interface {
+	StartLlamaAIServer() error
 	SummarizeText(prompt string) (string, error)
 	StartEmbeddingServer() error
 	GenerateEmbedding(text string) ([]float32, error)
@@ -24,33 +25,82 @@ type EmbeddingResponse struct {
 	Embedding [][]float32
 }
 
+type ChatRequest struct {
+	Messages []Message `json:"messages"`
+}
+
+type Message struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type ChatResponse struct {
+	Choices []struct {
+		Message Message `json:"message"`
+	} `json:"choices"`
+}
+
 func NewLlamaService() LlamaService {
 	return &llamaService{}
 }
 
-func (s *llamaService) SummarizeText(prompt string) (string, error) {
-	llamaPath := filepath.Join("llama", "llama.cpp", "build", "bin", "llama-cli.exe")
+func (s *llamaService) StartLlamaAIServer() error {
+	llamaPath := filepath.Join("llama", "llama.cpp", "build", "bin", "llama-server.exe")
 	modelPath := filepath.Join("llama", "llama.cpp", "models", "qwen", "qwen2.5-1.5b-instruct-q4_k_m.gguf")
 	cmd := exec.Command(
 		llamaPath,
 		"-m", modelPath,
-		"-p", prompt,
-		"-n", "30",
-		"-t", "6",
-		"--no-warmup",
-		"-st",
+		"--port", "8083",
 	)
+	return cmd.Start()
+}
 
-	var stderr, stdout bytes.Buffer
-	cmd.Stderr = &stderr
-	cmd.Stdout = &stdout
-
-	err := cmd.Run()
-	if err != nil {
-		return "", fmt.Errorf("error running llama: %v", err)
+func (s *llamaService) SummarizeText(prompt string) (string, error) {
+	body := ChatRequest{
+		Messages: []Message{
+			{
+				Role:    "user",
+				Content: prompt,
+			},
+		},
 	}
 
-	return stdout.String(), nil
+	data, err := json.Marshal(body)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := http.Post(
+		"http://localhost:8083/v1/chat/completions",
+		"application/json",
+		bytes.NewReader(data),
+	)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+
+		return "", fmt.Errorf(
+			"llama server returned %s: %s",
+			resp.Status,
+			string(body),
+		)
+	}
+
+	var result ChatResponse
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("summary decode failed: %w", err)
+	}
+
+	if len(result.Choices) == 0 {
+		return "", fmt.Errorf("llama server returned no choices")
+	}
+
+	return result.Choices[0].Message.Content, nil
 }
 
 func (s *llamaService) StartEmbeddingServer() error {

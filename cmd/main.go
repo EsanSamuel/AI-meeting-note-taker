@@ -62,6 +62,11 @@ func main() {
 	meetingHandler := handlers.NewMeetingHandler(meetingService)
 	transcriptHandler := handlers.NewTranscriptHandler(transcriptService, transcribeService)
 
+	if err := llamaService.StartLlamaAIServer(); err != nil {
+		fmt.Printf("Error starting llama server %s", err)
+		return
+	}
+
 	if err := llamaService.StartEmbeddingServer(); err != nil {
 		fmt.Printf("Error starting embedding server %s", err)
 		return

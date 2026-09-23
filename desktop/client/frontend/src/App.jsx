@@ -36,6 +36,72 @@ function isLikelyVirtualDevice(label = '') {
     return /cable|blackhole|loopback|virtual/i.test(label);
 }
 
+// --- AI summary formatting helpers -----------------------------------------
+
+function renderInlineMarkdown(text) {
+    const parts = text.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+    return parts.map((part, index) =>
+        part.startsWith('**') && part.endsWith('**')
+            ? <strong key={index}>{part.slice(2, -2)}</strong>
+            : <span key={index}>{part}</span>
+    );
+}
+
+function renderSummaryBlocks(body) {
+    const lines = body.split('\n').map((line) => line.trim()).filter(Boolean);
+    const blocks = [];
+    let currentList = null;
+    lines.forEach((line) => {
+        if (line.startsWith('*')) {
+            const content = line.replace(/^\*+\s*/, '');
+            if (!currentList) { currentList = []; blocks.push({ type: 'list', items: currentList }); }
+            currentList.push(content);
+        } else {
+            currentList = null;
+            blocks.push({ type: 'para', text: line.replace(/^#+\s*/, '') });
+        }
+    });
+    return blocks.map((block, index) => block.type === 'list'
+        ? <ul className="summary-list" key={index}>{block.items.map((item, itemIndex) => <li key={itemIndex}>{renderInlineMarkdown(item)}</li>)}</ul>
+        : <p key={index}>{renderInlineMarkdown(block.text)}</p>
+    );
+}
+
+function parseSummarySections(summary) {
+    if (!summary) return [];
+    const chunks = summary.replace(/\r\n/g, '\n').split(/\n-{3,}\n/).map((chunk) => chunk.trim()).filter(Boolean);
+    return chunks.map((chunk, index) => {
+        const headerMatch = chunk.match(/^#{1,6}\s*\d*\.?\s*(.+?)\n([\s\S]*)$/);
+        return headerMatch
+            ? { id: index, title: headerMatch[1].trim(), body: headerMatch[2].trim() }
+            : { id: index, title: null, body: chunk };
+    });
+}
+
+function SummaryContent({ summary }) {
+    const [expanded, setExpanded] = useState(false);
+    const sections = parseSummarySections(summary);
+    if (!sections.length) return null;
+    return <>
+        <div className={`summary-content ${expanded ? '' : 'is-collapsed'}`}>
+            {sections.map((section) => (
+                <div className="summary-section" key={section.id}>
+                    {section.title && <h4>{section.title}</h4>}
+                    {renderSummaryBlocks(section.body)}
+                </div>
+            ))}
+        </div>
+        <button className={`summary-toggle ${expanded ? 'is-expanded' : ''}`} onClick={() => setExpanded((current) => !current)}>
+            {expanded ? 'Show less' : 'Show full summary'}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 9l6 6 6-6" />
+            </svg>
+        </button>
+    </>;
+}
+
+// -----------------------------------------------------------------------------
+
 function App() {
     const [view, setView] = useState('overview');
     const [meetings, setMeetings] = useState([]);
@@ -54,6 +120,7 @@ function App() {
     const [microphoneDeviceId, setMicrophoneDeviceId] = useState(
         () => localStorage.getItem('afterword.microphoneDeviceId') || ''
     );
+    const [generatingSummary, setGeneratingSummary] = useState(false);
     const fileInput = useRef(null);
     const recorderRef = useRef(null);
     const streamRef = useRef(null);
@@ -232,6 +299,27 @@ function App() {
                 setNotice('Speaker names could not be saved.');
             }
         }
+    }
+
+    async function regenerateSummary(meeting) {
+        if (!meeting) return;
+        setGeneratingSummary(true);
+        setNotice('Regenerating AI summary...');
+        try {
+            await api.recordings.generateAIResults(meeting.id);
+            const [meetingDetails, decisions, actionItems] = await Promise.all([
+                api.meetings.get(meeting.id),
+                api.meetings.decisions.list(meeting.id),
+                api.meetings.actionItems.list(meeting.id),
+            ]);
+            setMeetings((current) => current.map((item) => item.id === meeting.id
+                ? normalizeMeeting({ ...item, ...meetingDetails, decisions, action_items: actionItems })
+                : item));
+            setNotice('AI summary generated.');
+        } catch (error) {
+            setNotice(error instanceof Error ? `Could not generate AI summary: ${error.message}` : 'Could not generate AI summary.');
+        }
+        setGeneratingSummary(false);
     }
 
     async function processRecording(file) {
@@ -443,7 +531,24 @@ function App() {
                     {view === 'meetings' && <MeetingLibrary meetings={filteredMeetings} query={query} setQuery={setQuery} onOpenMeeting={openMeeting} onUpload={() => fileInput.current?.click()} onRecord={toggleRecording} recording={recording} recordingSeconds={recordingSeconds} onRefresh={loadMeetingsFromDatabase} />}
                     {view === 'actions' && <ActionView items={actionItems} onToggle={toggleAction} onOpenMeeting={openMeeting} />}
                     {view === 'settings' && <Settings apiBaseUrl={apiBaseUrl} apiOnline={apiOnline} workspaceName={workspaceName} onSaveApiBaseUrl={saveApiBaseUrl} onSaveWorkspaceName={saveWorkspaceName} audioDevices={audioDevices} microphoneDeviceId={microphoneDeviceId} onSaveMicrophoneDevice={saveMicrophoneDevice} />}
-                    {view === 'detail' && selectedMeeting && <><MeetingAudio meeting={selectedMeeting} /><div className="detail-actions"><button className="secondary-button" onClick={() => deleteMeeting(selectedMeeting)}>Delete meeting</button></div><MeetingDetail meeting={selectedMeeting} onBack={() => setView('meetings')} onToggle={toggleAction} editingTitle={editingMeetingTitle} titleDraft={meetingTitleDraft} onBeginTitleEdit={() => beginMeetingTitleEdit(selectedMeeting)} onTitleDraftChange={setMeetingTitleDraft} onSaveTitle={() => saveMeetingTitle(selectedMeeting)} onCancelTitleEdit={() => setEditingMeetingTitle(false)} /><SpeakerEditor meeting={selectedMeeting} onSave={renameSpeakers} /></>}
+                    {view === 'detail' && selectedMeeting && <>
+                        <MeetingAudio meeting={selectedMeeting} />
+                        <MeetingDetail
+                            meeting={selectedMeeting}
+                            onBack={() => setView('meetings')}
+                            onToggle={toggleAction}
+                            editingTitle={editingMeetingTitle}
+                            titleDraft={meetingTitleDraft}
+                            onBeginTitleEdit={() => beginMeetingTitleEdit(selectedMeeting)}
+                            onTitleDraftChange={setMeetingTitleDraft}
+                            onSaveTitle={() => saveMeetingTitle(selectedMeeting)}
+                            onCancelTitleEdit={() => setEditingMeetingTitle(false)}
+                            onGenerateSummary={() => regenerateSummary(selectedMeeting)}
+                            generatingSummary={generatingSummary}
+                            onDelete={() => deleteMeeting(selectedMeeting)}
+                        />
+                        <SpeakerEditor meeting={selectedMeeting} onSave={renameSpeakers} />
+                    </>}
                 </div>
                 <input ref={fileInput} type="file" accept="audio/*,video/*,.webm,.mp4" hidden onChange={uploadRecording} />
                 {uploading && <div className="processing"><span className="spinner"></span><div><strong>Analyzing your recording</strong><small>Transcription, speakers, and takeaways</small></div></div>}
@@ -512,7 +617,61 @@ function MeetingAudio({ meeting }) {
     return <div className="audio-player"><div className="eyebrow">MEETING AUDIO</div><audio ref={audioRef} controls preload="metadata" src={getMeetingAudioUrl(meeting.id)} /><small>Click a transcript timestamp to jump to that moment.</small></div>;
 }
 
-function MeetingDetail({ meeting, onBack, onToggle, editingTitle, titleDraft, onBeginTitleEdit, onTitleDraftChange, onSaveTitle, onCancelTitleEdit }) { return <><button className="back-button" onClick={onBack}>← Back to meetings</button><div className="detail-heading"><div><div className="eyebrow">{meeting.date || 'CAPTURED MEETING'}</div>{editingTitle ? <div className="title-editor"><input className="meeting-title-input" value={titleDraft} onChange={(event) => onTitleDraftChange(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') onSaveTitle(); if (event.key === 'Escape') onCancelTitleEdit(); }} autoFocus /><button className="title-save-button" onClick={onSaveTitle}>Save</button><button className="title-cancel-button" onClick={onCancelTitleEdit}>Cancel</button></div> : <div className="title-line"><h1>{meeting.title}</h1><button className="edit-title-button" onClick={onBeginTitleEdit} aria-label="Edit meeting name" title="Edit meeting name">Edit</button></div>}<p className="detail-meta">{formatDuration(meeting.duration_seconds)} <span>·</span> {meeting.transcript?.length || 0} transcript segments <span>·</span> {meeting.action_items?.length || 0} action items</p></div><button className="secondary-button">•••</button></div><section className="summary-banner"><div className="summary-icon">✦</div><div><div className="eyebrow">AI SUMMARY</div><p>{meeting.summary || 'This meeting has not been summarized yet.'}</p></div></section><div className="detail-grid"><div className="transcript-panel"><div className="panel-heading"><div><div className="eyebrow">CONVERSATION</div><h3>Transcript</h3></div><button className="text-button">Export <span>↓</span></button></div>{meeting.transcript?.length ? meeting.transcript.map((segment, index) => <div className="transcript-line" key={`${segment.start}-${index}`}><button className="timestamp">{formatTime(segment.start)}</button><div><strong>{segment.speaker?.replace('SPEAKER_', 'Speaker ')}</strong><p>{segment.text}</p></div></div>) : <div className="empty-state">Transcript segments will appear here after processing.</div>}</div><aside className="detail-side"><div className="panel"><div className="panel-heading"><div><div className="eyebrow">FOLLOW THROUGH</div><h3>Action items</h3></div><span className="count-badge">{meeting.action_items?.length || 0}</span></div>{meeting.action_items?.map((item) => <ActionRow key={item.id} item={{ ...item, meetingId: meeting.id, meetingTitle: meeting.title }} onToggle={onToggle} />)}{!meeting.action_items?.length && <div className="empty-state">No action items found.</div>}</div><div className="panel decisions-panel"><div className="panel-heading"><div><div className="eyebrow">AGREEMENTS</div><h3>Decisions</h3></div></div>{meeting.decisions?.map((decision) => <div className="decision" key={decision.id || decision.timestamp_seconds}><span>✓</span><p>{decision.decision || decision.text}</p></div>)}{!meeting.decisions?.length && <div className="empty-state">No decisions found.</div>}</div></aside></div></>; }
+function MeetingDetail({ meeting, onBack, onToggle, editingTitle, titleDraft, onBeginTitleEdit, onTitleDraftChange, onSaveTitle, onCancelTitleEdit, onGenerateSummary, generatingSummary, onDelete }) {
+    return <>
+        <button className="back-button" onClick={onBack}>← Back to meetings</button>
+        <div className="detail-heading">
+            <div>
+                <div className="eyebrow">{meeting.date || 'CAPTURED MEETING'}</div>
+                {editingTitle ? <div className="title-editor"><input className="meeting-title-input" value={titleDraft} onChange={(event) => onTitleDraftChange(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') onSaveTitle(); if (event.key === 'Escape') onCancelTitleEdit(); }} autoFocus /><button className="title-save-button" onClick={onSaveTitle}>Save</button><button className="title-cancel-button" onClick={onCancelTitleEdit}>Cancel</button></div> : <div className="title-line"><h1>{meeting.title}</h1><button className="edit-title-button" onClick={onBeginTitleEdit} aria-label="Edit meeting name" title="Edit meeting name">Edit</button></div>}
+                <p className="detail-meta">{formatDuration(meeting.duration_seconds)} <span>·</span> {meeting.transcript?.length || 0} transcript segments <span>·</span> {meeting.action_items?.length || 0} action items</p>
+            </div>
+            <div className="detail-header-actions">
+                <button className="icon-danger-button" onClick={onDelete} aria-label="Delete meeting" title="Delete meeting">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 7h16" />
+                        <path d="M9 7V4h6v3" />
+                        <path d="M6 7l1 13h10l1-13" />
+                        <path d="M10 11v6" />
+                        <path d="M14 11v6" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <section className="summary-banner">
+            <div className="summary-icon">✦</div>
+            <div className="summary-banner-body">
+                <div className="eyebrow">AI SUMMARY</div>
+                {meeting.summary
+                    ? <SummaryContent summary={meeting.summary} />
+                    : <p>This meeting has not been summarized yet.</p>}
+                {!meeting.summary && (
+                    <button className="generate-summary-button" onClick={onGenerateSummary} disabled={generatingSummary}>
+                        <span className="sparkle">✦</span>{generatingSummary ? 'Generating…' : 'Generate AI summary'}
+                    </button>
+                )}
+            </div>
+        </section>
+        <div className="detail-grid">
+            <div className="transcript-panel">
+                <div className="panel-heading"><div><div className="eyebrow">CONVERSATION</div><h3>Transcript</h3></div><button className="text-button">Export <span>↓</span></button></div>
+                {meeting.transcript?.length ? meeting.transcript.map((segment, index) => <div className="transcript-line" key={`${segment.start}-${index}`}><button className="timestamp">{formatTime(segment.start)}</button><div><strong>{segment.speaker?.replace('SPEAKER_', 'Speaker ')}</strong><p>{segment.text}</p></div></div>) : <div className="empty-state">Transcript segments will appear here after processing.</div>}
+            </div>
+            <aside className="detail-side">
+                <div className="panel">
+                    <div className="panel-heading"><div><div className="eyebrow">FOLLOW THROUGH</div><h3>Action items</h3></div><span className="count-badge">{meeting.action_items?.length || 0}</span></div>
+                    {meeting.action_items?.map((item) => <ActionRow key={item.id} item={{ ...item, meetingId: meeting.id, meetingTitle: meeting.title }} onToggle={onToggle} />)}
+                    {!meeting.action_items?.length && <div className="empty-state">No action items found.</div>}
+                </div>
+                <div className="panel decisions-panel">
+                    <div className="panel-heading"><div><div className="eyebrow">AGREEMENTS</div><h3>Decisions</h3></div></div>
+                    {meeting.decisions?.map((decision) => <div className="decision" key={decision.id || decision.timestamp_seconds}><span>✓</span><p>{decision.decision || decision.text}</p></div>)}
+                    {!meeting.decisions?.length && <div className="empty-state">No decisions found.</div>}
+                </div>
+            </aside>
+        </div>
+    </>;
+}
 
 function Settings({ apiBaseUrl, apiOnline, workspaceName, onSaveApiBaseUrl, onSaveWorkspaceName, audioDevices, microphoneDeviceId, onSaveMicrophoneDevice }) {
     const [draftUrl, setDraftUrl] = useState(apiBaseUrl);
