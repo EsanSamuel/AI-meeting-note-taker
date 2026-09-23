@@ -82,14 +82,17 @@ SELECT
     embedding <=> $1 AS distance
 FROM
     transcript_chunk
+WHERE
+    meeting_id = $2
 ORDER BY
     embedding <=> $1
 LIMIT
-    $2
+    $3
 `
 
 type SearchTranscriptChunkParams struct {
 	Embedding pgvector_go.Vector `json:"embedding"`
+	MeetingID pgtype.UUID        `json:"meeting_id"`
 	Limit     int32              `json:"limit"`
 }
 
@@ -101,7 +104,7 @@ type SearchTranscriptChunkRow struct {
 }
 
 func (q *Queries) SearchTranscriptChunk(ctx context.Context, arg SearchTranscriptChunkParams) ([]SearchTranscriptChunkRow, error) {
-	rows, err := q.db.Query(ctx, searchTranscriptChunk, arg.Embedding, arg.Limit)
+	rows, err := q.db.Query(ctx, searchTranscriptChunk, arg.Embedding, arg.MeetingID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}

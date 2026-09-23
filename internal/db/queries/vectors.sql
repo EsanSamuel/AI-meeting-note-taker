@@ -23,7 +23,9 @@ SELECT
     embedding <=> $1 AS distance
 FROM
     transcript_chunk
+WHERE
+    meeting_id = $2
 ORDER BY
     embedding <=> $1
 LIMIT
-    $2;
+    $3;

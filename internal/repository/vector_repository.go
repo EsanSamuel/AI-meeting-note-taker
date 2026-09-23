@@ -28,6 +28,7 @@ type VectorResponse struct {
 }
 
 type SearchTranscriptChunkParams struct {
+	MeetingID pgtype.UUID        `json:"meeting_id"`
 	Embedding pgvector_go.Vector `json:"embedding"`
 	Limit     int32              `json:"limit"`
 }
@@ -40,9 +41,9 @@ type SearchTranscriptChunkResult struct {
 }
 
 type TranscriptVector struct {
-	ID    pgtype.UUID `json:"id"`
-    MeetingID  pgtype.UUID `json:"meeting_id"`
-	Chunk string      `json:"chunk"`
+	ID        pgtype.UUID        `json:"id"`
+	MeetingID pgtype.UUID        `json:"meeting_id"`
+	Chunk     string             `json:"chunk"`
 	Embedding pgvector_go.Vector `json:"embedding"`
 }
 
@@ -97,6 +98,7 @@ func (r *vectorRepository) GetTranscriptVector(ctx context.Context, meetingID uu
 func (r *vectorRepository) SearchTranscriptChunk(ctx context.Context, v SearchTranscriptChunkParams) ([]SearchTranscriptChunkResult, error) {
 	rows, err := r.q.SearchTranscriptChunk(ctx, sqlc.SearchTranscriptChunkParams{
 		Embedding: v.Embedding,
+		MeetingID: v.MeetingID,
 		Limit:     v.Limit,
 	})
 

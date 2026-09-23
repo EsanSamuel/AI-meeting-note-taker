@@ -188,6 +188,20 @@ function App() {
         }
     }
 
+    async function deleteMeeting(meeting) {
+        if (!window.confirm(`Delete "${meeting.title || 'this meeting'}"? This also removes its transcript, decisions, and action items.`)) return;
+        try {
+            await api.meetings.remove(meeting.id);
+            setMeetings((current) => current.filter((item) => item.id !== meeting.id));
+            setSelectedId(null);
+            setEditingMeetingTitle(false);
+            setView('meetings');
+            setNotice('Meeting deleted.');
+        } catch (error) {
+            setNotice(error instanceof Error ? `Could not delete meeting: ${error.message}` : 'Could not delete meeting.');
+        }
+    }
+
     async function toggleAction(item) {
         const completed = !item.completed;
         setMeetings((current) => current.map((meeting) => meeting.id !== item.meetingId ? meeting : { ...meeting, action_items: meeting.action_items.map((action) => action.id === item.id ? { ...action, completed } : action) }));
@@ -429,7 +443,7 @@ function App() {
                     {view === 'meetings' && <MeetingLibrary meetings={filteredMeetings} query={query} setQuery={setQuery} onOpenMeeting={openMeeting} onUpload={() => fileInput.current?.click()} onRecord={toggleRecording} recording={recording} recordingSeconds={recordingSeconds} onRefresh={loadMeetingsFromDatabase} />}
                     {view === 'actions' && <ActionView items={actionItems} onToggle={toggleAction} onOpenMeeting={openMeeting} />}
                     {view === 'settings' && <Settings apiBaseUrl={apiBaseUrl} apiOnline={apiOnline} workspaceName={workspaceName} onSaveApiBaseUrl={saveApiBaseUrl} onSaveWorkspaceName={saveWorkspaceName} audioDevices={audioDevices} microphoneDeviceId={microphoneDeviceId} onSaveMicrophoneDevice={saveMicrophoneDevice} />}
-                    {view === 'detail' && selectedMeeting && <><MeetingAudio meeting={selectedMeeting} /><MeetingDetail meeting={selectedMeeting} onBack={() => setView('meetings')} onToggle={toggleAction} editingTitle={editingMeetingTitle} titleDraft={meetingTitleDraft} onBeginTitleEdit={() => beginMeetingTitleEdit(selectedMeeting)} onTitleDraftChange={setMeetingTitleDraft} onSaveTitle={() => saveMeetingTitle(selectedMeeting)} onCancelTitleEdit={() => setEditingMeetingTitle(false)} /><SpeakerEditor meeting={selectedMeeting} onSave={renameSpeakers} /></>}
+                    {view === 'detail' && selectedMeeting && <><MeetingAudio meeting={selectedMeeting} /><div className="detail-actions"><button className="secondary-button" onClick={() => deleteMeeting(selectedMeeting)}>Delete meeting</button></div><MeetingDetail meeting={selectedMeeting} onBack={() => setView('meetings')} onToggle={toggleAction} editingTitle={editingMeetingTitle} titleDraft={meetingTitleDraft} onBeginTitleEdit={() => beginMeetingTitleEdit(selectedMeeting)} onTitleDraftChange={setMeetingTitleDraft} onSaveTitle={() => saveMeetingTitle(selectedMeeting)} onCancelTitleEdit={() => setEditingMeetingTitle(false)} /><SpeakerEditor meeting={selectedMeeting} onSave={renameSpeakers} /></>}
                 </div>
                 <input ref={fileInput} type="file" accept="audio/*,video/*,.webm,.mp4" hidden onChange={uploadRecording} />
                 {uploading && <div className="processing"><span className="spinner"></span><div><strong>Analyzing your recording</strong><small>Transcription, speakers, and takeaways</small></div></div>}

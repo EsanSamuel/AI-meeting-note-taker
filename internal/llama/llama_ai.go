@@ -12,8 +12,8 @@ import (
 
 type LlamaService interface {
 	SummarizeText(prompt string) (string, error)
-	GenerateEmbedding(text string) (string, error)
-	GenerateEmbeddingServer(text string) ([]float32, error)
+	StartEmbeddingServer() error
+	GenerateEmbedding(text string) ([]float32, error)
 }
 
 type llamaService struct {
@@ -53,34 +53,21 @@ func (s *llamaService) SummarizeText(prompt string) (string, error) {
 	return stdout.String(), nil
 }
 
-func (s *llamaService) GenerateEmbedding(text string) (string, error) {
-	llamaPath := filepath.Join("llama", "llama.cpp", "build", "bin", "llama-cli.exe")
+func (s *llamaService) StartEmbeddingServer() error {
+	llamaPath := filepath.Join("llama", "llama.cpp", "build", "bin", "llama-server.exe")
 	modelPath := filepath.Join("llama", "llama.cpp", "models", "embedding", "bge-small-en-v1.5-q4_k_m.gguf")
 	cmd := exec.Command(
 		llamaPath,
 		"-m", modelPath,
 		"--embedding",
-		"-p", text,
-		"-n", "30",
-		"-t", "6",
-		"--no-warmup",
-		"-st",
+		"--port", "8082",
 	)
 
-	var stderr, stdout bytes.Buffer
-	cmd.Stderr = &stderr
-	cmd.Stdout = &stdout
-
-	err := cmd.Run()
-	if err != nil {
-		return "", fmt.Errorf("error running llama: %v", err)
-	}
-
-	return stdout.String(), nil
+	return cmd.Start()
 }
 
 // llama\llama.cpp\build\bin>llama-server.exe  -m ..\models\embedding\bge-small-en-v1.5-q4_k_m.gguf     --embedding   --port 8
-func (s *llamaService) GenerateEmbeddingServer(text string) ([]float32, error) {
+func (s *llamaService) GenerateEmbedding(text string) ([]float32, error) {
 	body := map[string]string{
 		"content": text,
 	}

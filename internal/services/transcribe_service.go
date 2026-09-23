@@ -134,6 +134,7 @@ type TranscribeService interface {
 	SummarizeTranscripts(transcriptChunks []TranscriptChunk, audioID string, meetingID uuid.UUID) ([]MeetingAnalysis, error)
 	UpdateSpeakers(ctx context.Context, meetingID uuid.UUID, speakers map[string]string) error
 	SummaryAllSummaryChunks(summaries []string) (string, error)
+	ChatWithTranscript(ctx context.Context, meetingID uuid.UUID, query string) (string, error)
 }
 
 type transcribeService struct {
@@ -273,7 +274,7 @@ func (s *transcribeService) ChunkTranscript(segments []MergedSegment, maxDuratio
 
 	for _, chunk := range chunks {
 		chunkString := FormatChunk(chunk)
-		embedding, err := s.llama.GenerateEmbeddingServer(chunkString)
+		embedding, err := s.llama.GenerateEmbedding(chunkString)
 		if err != nil {
 			fmt.Printf("Error generating embedding %s", err)
 			return nil
@@ -559,7 +560,44 @@ func (s *transcribeService) UpdateSpeakers(ctx context.Context, meetingID uuid.U
 	return nil
 }
 
-/*func (s *transcribeService) ChatWithTranscript(ctx context.Context, meetingID uuid.UUID, query string) (string, error) {
+func (s *transcribeService) ChatWithTranscript(ctx context.Context, meetingID uuid.UUID, query string) (string, error) {
+	queryEmbedding, err := s.llama.GenerateEmbedding(query)
+	if err != nil {
+		return "", fmt.Errorf("failed to embed query: %v", err)
+	}
 
-return "",nil
-}*/
+	// Search for the most relevant chunks for this meeting, ranked by
+	// vector distance to the query embedding.
+	results, err := s.vector.SearchTranscriptChunk(ctx, repository.SearchTranscriptChunkParams{
+		MeetingID: pgtype.UUID{Bytes: meetingID, Valid: true},
+		Embedding: pgvector.NewVector(queryEmbedding),
+		Limit:     5, // tune based on chunk size / context window
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to search transcript chunks: %v", err)
+	}
+
+	if len(results) == 0 {
+		return "", fmt.Errorf("no relevant transcript context found")
+	}
+
+	// Build context string from retrieved chunks
+	var contextBuilder strings.Builder
+	for _, r := range results {
+		contextBuilder.WriteString(r.Chunk)
+		contextBuilder.WriteString("\n---\n")
+	}
+
+	prompt := fmt.Sprintf(
+		"You are answering questions about a meeting transcript. Use only the context below to answer.\n\nContext:\n%s\n\nQuestion: %s\nAnswer:",
+		contextBuilder.String(),
+		query,
+	)
+
+	answer, err := config.Ai(prompt)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate answer: %v", err)
+	}
+
+	return answer, nil
+}
