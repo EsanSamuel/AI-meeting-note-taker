@@ -78,6 +78,20 @@ function parseSummarySections(summary) {
     });
 }
 
+function getSummaryExcerpt(summary, maxLength = 160) {
+    if (!summary) return '';
+    const sections = parseSummarySections(summary);
+    const overview = sections.find((section) => /overview/i.test(section.title || '')) || sections[0];
+    if (!overview) return '';
+    const plain = overview.body
+        .replace(/^#+\s*/gm, '')
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/^\*+\s*/gm, '')
+        .replace(/\n+/g, ' ')
+        .trim();
+    return plain.length > maxLength ? `${plain.slice(0, maxLength).trim()}…` : plain;
+}
+
 function SummaryContent({ summary }) {
     const [expanded, setExpanded] = useState(false);
     const sections = parseSummarySections(summary);
@@ -576,9 +590,9 @@ function Overview({ meetings, openActions, onOpenMeeting, onUpload, onRecord, re
     </>;
 }
 
-function MeetingCard({ meeting, index, onClick }) { return <button className={`meeting-card card-${index}`} onClick={onClick}><div className="card-top"><span className="waveform"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span>{formatDuration(meeting.duration_seconds)}</span></div><h3>{meeting.title}</h3><p>{meeting.summary || 'Transcript and meeting insights are ready to review.'}</p><div className="card-footer"><span>{meeting.date || new Date(meeting.started_at).toLocaleDateString()}</span><span className="arrow">↗</span></div></button>; }
+function MeetingCard({ meeting, index, onClick }) { return <button className={`meeting-card card-${index}`} onClick={onClick}><div className="card-top"><span className="waveform"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span>{formatDuration(meeting.duration_seconds)}</span></div><h3>{meeting.title}</h3><p>{getSummaryExcerpt(meeting.summary) || 'Transcript and meeting insights are ready to review.'}</p><div className="card-footer"><span>{meeting.date || new Date(meeting.started_at).toLocaleDateString()}</span><span className="arrow">↗</span></div></button>; }
 
-function MeetingLibrary({ meetings, query, setQuery, onOpenMeeting, onUpload, onRecord, recording, recordingSeconds, onRefresh }) { return <><PageIntro eyebrow="MEETING LIBRARY" title="All meetings"><div className="intro-actions"><RecordingButton onRecord={onRecord} recording={recording} recordingSeconds={recordingSeconds} /><button className="primary-button" onClick={onUpload}><span>+</span> Import recording</button></div></PageIntro><div className="library-toolbar"><div className="search-field"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search meetings" /><kbd>⌘ F</kbd></div><div className="library-tools"><span className="result-count">{meetings.length} conversations</span><button className="refresh-button" onClick={onRefresh}>Refresh database</button></div></div><div className="library-list">{meetings.map((meeting) => <button className="library-row" key={meeting.id} onClick={() => onOpenMeeting(meeting.id)}><span className="row-date">{meeting.date || new Date(meeting.started_at).toLocaleDateString()}</span><span className="row-title"><strong>{meeting.title}</strong><small>{meeting.summary || 'No summary available yet.'}</small></span><span className="row-duration">{formatDuration(meeting.duration_seconds)}</span><span className="row-arrow">→</span></button>)}</div>{!meetings.length && <div className="empty-state large">No meetings match that search.</div>}</>; }
+function MeetingLibrary({ meetings, query, setQuery, onOpenMeeting, onUpload, onRecord, recording, recordingSeconds, onRefresh }) { return <><PageIntro eyebrow="MEETING LIBRARY" title="All meetings"><div className="intro-actions"><RecordingButton onRecord={onRecord} recording={recording} recordingSeconds={recordingSeconds} /><button className="primary-button" onClick={onUpload}><span>+</span> Import recording</button></div></PageIntro><div className="library-toolbar"><div className="search-field"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search meetings" /><kbd>⌘ F</kbd></div><div className="library-tools"><span className="result-count">{meetings.length} conversations</span><button className="refresh-button" onClick={onRefresh}>Refresh database</button></div></div><div className="library-list">{meetings.map((meeting) => <button className="library-row" key={meeting.id} onClick={() => onOpenMeeting(meeting.id)}><span className="row-date">{meeting.date || new Date(meeting.started_at).toLocaleDateString()}</span><span className="row-title"><strong>{meeting.title}</strong><small>{getSummaryExcerpt(meeting.summary) || 'No summary available yet.'}</small></span><span className="row-duration">{formatDuration(meeting.duration_seconds)}</span><span className="row-arrow">→</span></button>)}</div>{!meetings.length && <div className="empty-state large">No meetings match that search.</div>}</>; }
 
 function ActionRow({ item, onToggle }) { return <div className="action-row"><button className={`checkbox ${item.completed ? 'checked' : ''}`} onClick={() => onToggle(item)}>{item.completed ? '✓' : ''}</button><div><strong className={item.completed ? 'completed-text' : ''}>{item.task}</strong><small>{item.assignee || 'Unassigned'} · {item.meetingTitle || 'Meeting'}</small></div></div>; }
 
