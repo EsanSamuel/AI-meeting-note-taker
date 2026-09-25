@@ -5,9 +5,68 @@
 package sqlc
 
 import (
+	"database/sql/driver"
+	"fmt"
+
 	"github.com/jackc/pgx/v5/pgtype"
 	pgvector_go "github.com/pgvector/pgvector-go"
 )
+
+type UserRole string
+
+const (
+	UserRoleOwner  UserRole = "owner"
+	UserRoleAdmin  UserRole = "admin"
+	UserRoleMember UserRole = "member"
+	UserRoleViewer UserRole = "viewer"
+)
+
+func (e *UserRole) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = UserRole(s)
+	case string:
+		*e = UserRole(s)
+	default:
+		return fmt.Errorf("unsupported scan type for UserRole: %T", src)
+	}
+	return nil
+}
+
+type NullUserRole struct {
+	UserRole UserRole `json:"user_role"`
+	Valid    bool     `json:"valid"` // Valid is true if UserRole is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullUserRole) Scan(value interface{}) error {
+	if value == nil {
+		ns.UserRole, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.UserRole.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullUserRole) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.UserRole), nil
+}
+
+type Invitation struct {
+	ID             pgtype.UUID        `json:"id"`
+	OrganizationID pgtype.UUID        `json:"organization_id"`
+	Email          string             `json:"email"`
+	Name           string             `json:"name"`
+	Role           UserRole           `json:"role"`
+	TokenHash      string             `json:"token_hash"`
+	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
+	AcceptedAt     pgtype.Timestamptz `json:"accepted_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
 
 type Meeting struct {
 	ID              pgtype.UUID        `json:"id"`
@@ -20,6 +79,7 @@ type Meeting struct {
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 	Summary         pgtype.Text        `json:"summary"`
+	OrganizationID  pgtype.UUID        `json:"organization_id"`
 }
 
 type MeetingActionItem struct {
@@ -40,6 +100,28 @@ type MeetingDecision struct {
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 }
 
+type Organization struct {
+	ID        pgtype.UUID        `json:"id"`
+	Name      string             `json:"name"`
+	Domain    pgtype.Text        `json:"domain"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type OrganizationMember struct {
+	OrganizationID pgtype.UUID        `json:"organization_id"`
+	UserID         pgtype.UUID        `json:"user_id"`
+	Role           UserRole           `json:"role"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+type Session struct {
+	ID        pgtype.UUID        `json:"id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	TokenHash string             `json:"token_hash"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type TranscriptChunk struct {
 	ID        pgtype.UUID        `json:"id"`
 	MeetingID pgtype.UUID        `json:"meeting_id"`
@@ -56,4 +138,13 @@ type TranscriptSegment struct {
 	Speaker   pgtype.Text        `json:"speaker"`
 	Text      string             `json:"text"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type User struct {
+	ID           pgtype.UUID        `json:"id"`
+	Email        string             `json:"email"`
+	Name         string             `json:"name"`
+	PasswordHash pgtype.Text        `json:"password_hash"`
+	IsActive     bool               `json:"is_active"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }

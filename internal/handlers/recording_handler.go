@@ -271,6 +271,7 @@ func (handler *RecordingHandler) GenerateAIResults(c *gin.Context) {
 		}
 		if len(decision_results) > 0 {
 			fmt.Println("Decision results is already in db")
+
 		} else {
 			for _, decision := range analysis.Decisions {
 				if _, err := handler.meetings.CreateMeetingDecision(c.Request.Context(), repository.MeetingDecision{

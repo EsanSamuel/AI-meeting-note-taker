@@ -11,31 +11,45 @@ import (
 )
 
 type Querier interface {
+	AcceptInvitation(ctx context.Context, id pgtype.UUID) error
+	AddOrganizationMember(ctx context.Context, arg AddOrganizationMemberParams) (OrganizationMember, error)
+	CreateInvitation(ctx context.Context, arg CreateInvitationParams) (Invitation, error)
 	// db/queries/meetings.sql
 	CreateMeeting(ctx context.Context, arg CreateMeetingParams) (Meeting, error)
 	CreateMeetingActionItem(ctx context.Context, arg CreateMeetingActionItemParams) (MeetingActionItem, error)
 	CreateMeetingDecision(ctx context.Context, arg CreateMeetingDecisionParams) (MeetingDecision, error)
+	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error)
+	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	// db/queries/transcripts.sql
 	CreateTranscriptSegment(ctx context.Context, arg CreateTranscriptSegmentParams) (TranscriptSegment, error)
 	// db/queries/vectors.sql
 	CreateTranscriptVectorEmbedding(ctx context.Context, arg CreateTranscriptVectorEmbeddingParams) (TranscriptChunk, error)
+	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeleteExpiredSessions(ctx context.Context) error
 	DeleteMeeting(ctx context.Context, id pgtype.UUID) error
 	DeleteMeetingActionItem(ctx context.Context, id pgtype.UUID) error
 	DeleteMeetingActionItems(ctx context.Context, meetingID pgtype.UUID) error
 	DeleteMeetingDecision(ctx context.Context, id pgtype.UUID) error
 	DeleteMeetingDecisions(ctx context.Context, meetingID pgtype.UUID) error
+	DeleteSession(ctx context.Context, tokenHash string) error
 	DeleteTranscriptSegment(ctx context.Context, id pgtype.UUID) error
 	DeleteTranscriptSegmentsByMeeting(ctx context.Context, meetingID pgtype.UUID) error
+	GetInvitationByTokenHash(ctx context.Context, tokenHash string) (Invitation, error)
 	GetMeeting(ctx context.Context, id pgtype.UUID) (Meeting, error)
 	GetMeetingActionItem(ctx context.Context, id pgtype.UUID) (MeetingActionItem, error)
 	GetMeetingDecision(ctx context.Context, id pgtype.UUID) (MeetingDecision, error)
+	GetSessionUser(ctx context.Context, tokenHash string) (GetSessionUserRow, error)
 	GetTranscriptSegment(ctx context.Context, id pgtype.UUID) (TranscriptSegment, error)
 	GetTranscriptVector(ctx context.Context, meetingID pgtype.UUID) ([]TranscriptChunk, error)
+	GetUser(ctx context.Context, id pgtype.UUID) (User, error)
+	GetUserByEmail(ctx context.Context, email string) (User, error)
+	GetUserWithOrganization(ctx context.Context, id pgtype.UUID) (GetUserWithOrganizationRow, error)
 	ListIncompleteActionItems(ctx context.Context, meetingID pgtype.UUID) ([]MeetingActionItem, error)
 	ListMeetingActionItems(ctx context.Context, meetingID pgtype.UUID) ([]MeetingActionItem, error)
 	ListMeetingDecisions(ctx context.Context, meetingID pgtype.UUID) ([]MeetingDecision, error)
 	ListMeetings(ctx context.Context) ([]Meeting, error)
 	ListMeetingsWithDecisionsAndActionItems(ctx context.Context) ([]ListMeetingsWithDecisionsAndActionItemsRow, error)
+	ListOrganizationMembers(ctx context.Context, organizationID pgtype.UUID) ([]ListOrganizationMembersRow, error)
 	ListTranscriptSegments(ctx context.Context, meetingID pgtype.UUID) ([]TranscriptSegment, error)
 	MarkActionItemCompleted(ctx context.Context, id pgtype.UUID) (MeetingActionItem, error)
 	MarkActionItemIncomplete(ctx context.Context, id pgtype.UUID) (MeetingActionItem, error)
@@ -45,6 +59,8 @@ type Querier interface {
 	UpdateMeetingSummary(ctx context.Context, arg UpdateMeetingSummaryParams) (Meeting, error)
 	UpdateSpeakers(ctx context.Context, arg UpdateSpeakersParams) ([]TranscriptSegment, error)
 	UpdateTranscriptSegment(ctx context.Context, arg UpdateTranscriptSegmentParams) (TranscriptSegment, error)
+	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
+	UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) error
 }
 
 var _ Querier = (*Queries)(nil)

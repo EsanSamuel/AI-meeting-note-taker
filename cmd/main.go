@@ -45,6 +45,7 @@ func main() {
 	}
 
 	// repositories
+	authRepository := repository.NewAuthRepository(db)
 	meetingRepository := repository.NewMeetingRepository(db)
 	transcriptRepository := repository.NewTranscriptRepository(db)
 	vectorRepository := repository.NewVectorRepository(db)
@@ -56,8 +57,10 @@ func main() {
 	transcribeService := services.NewTranscribeService(llamaService, vectorRepository, transcriptRepository)
 	meetingService := dbservices.NewMeetingService(meetingRepository)
 	transcriptService := dbservices.NewTranscriptService(transcriptRepository)
+	authService := dbservices.NewAuthService(authRepository)
 
 	// handlers
+	authHandler := handlers.NewAuthHandler(authService)
 	recordingHandler := handlers.NewRecordingHandler(fileService, audioService, transcribeService, meetingService, transcriptService, LOGGER)
 	meetingHandler := handlers.NewMeetingHandler(meetingService)
 	transcriptHandler := handlers.NewTranscriptHandler(transcriptService, transcribeService)
@@ -72,7 +75,7 @@ func main() {
 		return
 	}
 
-	if err := router.New(recordingHandler, meetingHandler, transcriptHandler).Run(serverAddr); err != nil {
+	if err := router.New(authHandler, recordingHandler, meetingHandler, transcriptHandler).Run(serverAddr); err != nil {
 		panic(err)
 	}
 }

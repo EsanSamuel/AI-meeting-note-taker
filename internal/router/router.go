@@ -8,8 +8,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func New(recordingHandler *handlers.RecordingHandler, meetingHandler *handlers.MeetingHandler, transcriptHandler *handlers.TranscriptHandler) *gin.Engine {
+func New(
+	authHandler *handlers.AuthHandler,
+	recordingHandler *handlers.RecordingHandler,
+	meetingHandler *handlers.MeetingHandler,
+	transcriptHandler *handlers.TranscriptHandler,
+) *gin.Engine {
 	router := gin.Default()
+
 	router.Use(cors.New(cors.Config{
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -21,6 +27,20 @@ func New(recordingHandler *handlers.RecordingHandler, meetingHandler *handlers.M
 	})
 
 	api := router.Group("/api/v1")
+
+	// auth routes
+	api.POST("/auth/setup", authHandler.Setup)
+	api.POST("/auth/login", authHandler.Login)
+	api.POST("/auth/logout", authHandler.Logout)
+	api.GET("/auth/me", authHandler.Me)
+
+	api.POST("/auth/invitations", authHandler.CreateInvitation)
+	api.POST("/auth/invitations/accept", authHandler.AcceptInvitation)
+
+	api.GET("/auth/users/:id", authHandler.GetUser)
+	api.PUT("/auth/users/:id", authHandler.UpdateUser)
+	api.PATCH("/auth/users/:id/role", authHandler.UpdateUserRole)
+	api.GET("/auth/organization/members", authHandler.ListOrganizationMembers)
 
 	// recording routes
 	api.POST("/recordings", recordingHandler.Create)
