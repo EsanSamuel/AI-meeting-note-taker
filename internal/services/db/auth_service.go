@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"time"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -161,7 +162,6 @@ func (s *authService) CreateInvitation(ctx context.Context, organizationID uuid.
 		Name:           name,
 		Role:           role,
 		TokenHash:      auth.HashToken(token),
-		ExpiresAt:      time.Now().Add(24 * time.Hour),
 	})
 	if err != nil {
 		return "", err
@@ -177,6 +177,7 @@ func (s *authService) AcceptInvitation(ctx context.Context, token, name, passwor
 
 	invitation, err := s.repo.GetInvitationByTokenHash(ctx, auth.HashToken(token))
 	if err != nil {
+		fmt.Println(err)
 		return repository.User{}, errors.New("invalid or expired invitation")
 	}
 

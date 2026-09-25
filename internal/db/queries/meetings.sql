@@ -4,6 +4,7 @@ INSERT INTO
     meetings (
         id,
         title,
+        organization_id,
         started_at,
         ended_at,
         duration_seconds,
@@ -11,7 +12,7 @@ INSERT INTO
         video_path
     )
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7)
+    ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING
     *;
 
@@ -30,6 +31,8 @@ SELECT
     *
 FROM
     meetings
+WHERE
+    organization_id = $1
 ORDER BY
     created_at DESC;
 

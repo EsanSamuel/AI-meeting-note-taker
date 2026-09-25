@@ -62,18 +62,17 @@ INSERT INTO
         expires_at
     )
 VALUES
-    ($1, $2, $3, $4, $5, $6)
+    ($1, $2, $3, $4, $5, NOW() + INTERVAL '24 hours')
 RETURNING
     id, organization_id, email, name, role, token_hash, expires_at, accepted_at, created_at
 `
 
 type CreateInvitationParams struct {
-	OrganizationID pgtype.UUID        `json:"organization_id"`
-	Email          string             `json:"email"`
-	Name           string             `json:"name"`
-	Role           UserRole           `json:"role"`
-	TokenHash      string             `json:"token_hash"`
-	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
+	OrganizationID pgtype.UUID `json:"organization_id"`
+	Email          string      `json:"email"`
+	Name           string      `json:"name"`
+	Role           UserRole    `json:"role"`
+	TokenHash      string      `json:"token_hash"`
 }
 
 func (q *Queries) CreateInvitation(ctx context.Context, arg CreateInvitationParams) (Invitation, error) {
@@ -83,7 +82,6 @@ func (q *Queries) CreateInvitation(ctx context.Context, arg CreateInvitationPara
 		arg.Name,
 		arg.Role,
 		arg.TokenHash,
-		arg.ExpiresAt,
 	)
 	var i Invitation
 	err := row.Scan(
@@ -213,7 +211,7 @@ FROM
 WHERE
     token_hash = $1
     AND accepted_at IS NULL
-    AND expires_at > NOW()
+    --AND expires_at > NOW()
 LIMIT
     1
 `

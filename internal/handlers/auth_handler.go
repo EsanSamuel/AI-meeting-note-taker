@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	services "example.com/internal/services/db"
 )
@@ -111,7 +112,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   7 * 24 * 60 * 60,
 	})
@@ -142,7 +143,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})
@@ -380,6 +381,11 @@ func getOrganizationID(c *gin.Context) (uuid.UUID, error) {
 	switch id := value.(type) {
 	case uuid.UUID:
 		return id, nil
+	case pgtype.UUID:
+		if !id.Valid {
+			return uuid.Nil, errors.New("invalid organization ID")
+		}
+		return uuid.UUID(id.Bytes), nil
 	case string:
 		return uuid.Parse(id)
 	default:

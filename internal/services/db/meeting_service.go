@@ -26,8 +26,8 @@ func (s *MeetingService) GetMeeting(ctx context.Context, id uuid.UUID) (reposito
 	return s.repo.GetMeeting(ctx, id)
 }
 
-func (s *MeetingService) ListMeetings(ctx context.Context) ([]repository.Meeting, error) {
-	return s.repo.ListMeetings(ctx)
+func (s *MeetingService) ListMeetings(ctx context.Context, OrganizationID uuid.UUID) ([]repository.Meeting, error) {
+	return s.repo.ListMeetings(ctx, OrganizationID)
 }
 
 func (s *MeetingService) UpdateMeeting(ctx context.Context, m repository.Meeting) (repository.Meeting, error) {

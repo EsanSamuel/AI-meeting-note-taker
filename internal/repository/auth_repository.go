@@ -362,10 +362,6 @@ func (r *authRepository) CreateInvitation(ctx context.Context, params CreateInvi
 		Name:      params.Name,
 		Role:      sqlc.UserRole(params.Role),
 		TokenHash: params.TokenHash,
-		ExpiresAt: pgtype.Timestamptz{
-			Time:  params.ExpiresAt,
-			Valid: true,
-		},
 	})
 	if err != nil {
 		return Invitation{}, err

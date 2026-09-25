@@ -1,6 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
 
-* { font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif; }
+* {
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+}
 
 :root {
     --ink: #18251f;
@@ -140,6 +142,145 @@ nav {
 
 .status-dot.online {
     background: #91d2a5;
+}
+
+.auth-shell {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    background: var(--paper);
+}
+
+.auth-card {
+    width: 360px;
+    background: #fff;
+    border: 1px solid var(--line);
+    padding: 32px;
+}
+
+.auth-card .brand {
+    padding: 0 0 24px;
+    color: var(--ink);
+}
+
+.auth-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.auth-tabs button {
+    flex: 1;
+    border: 1px solid var(--line);
+    background: #fff;
+    padding: 9px;
+    font-size: 11px;
+    color: var(--muted);
+}
+
+.auth-tabs button.active {
+    background: var(--green);
+    color: #fff;
+    border-color: var(--green);
+}
+
+.auth-form {
+    display: grid;
+    gap: 10px;
+}
+
+.auth-error {
+    background: #fbe9e5;
+    color: #a04436;
+    font-size: 11px;
+    padding: 9px 11px;
+    margin-bottom: 14px;
+}
+
+.auth-notice {
+    background: #edf3c9;
+    color: #52652d;
+    font-size: 11px;
+    padding: 9px 11px;
+    margin-bottom: 14px;
+}
+
+.auth-loading {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.members-panel {
+    grid-column: span 2;
+}
+
+.invite-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr 140px auto;
+    gap: 8px;
+    align-items: center;
+    margin: 14px 0 20px;
+}
+
+.invite-form .settings-input {
+    margin-bottom: 0;
+}
+
+.member-list {
+    display: grid;
+    gap: 0;
+}
+
+.member-row {
+    display: grid;
+    grid-template-columns: 1fr 140px auto;
+    gap: 10px;
+    align-items: center;
+    border-top: 1px solid #edf0eb;
+    padding: 12px 0;
+}
+
+.member-row small {
+    display: block;
+    color: #8b978f;
+    font-size: 10px;
+}
+
+.owner-label {
+    color: #58702f;
+    background: #edf3c9;
+    text-align: center;
+    padding: 9px 0;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+
+.logout-button {
+    border: 0;
+    background: transparent;
+    color: #91aa9e;
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 0;
+}
+
+.logout-button:hover {
+    color: #fff;
+}
+
+@media (max-width: 900px) {
+    .members-panel {
+        grid-column: span 1;
+    }
+
+    .invite-form {
+        grid-template-columns: 1fr;
+    }
 }
 
 .profile {

@@ -31,6 +31,7 @@ type createMeetingRequest struct {
 	DurationSeconds float64   `json:"duration_seconds"`
 	AudioPath       string    `json:"audio_path"`
 	VideoPath       string    `json:"video_path"`
+	OrganizationId  uuid.UUID `json:"organization_id"`
 }
 
 func (h *MeetingHandler) CreateMeeting(c *gin.Context) {
@@ -47,6 +48,7 @@ func (h *MeetingHandler) CreateMeeting(c *gin.Context) {
 		DurationSeconds: req.DurationSeconds,
 		AudioPath:       req.AudioPath,
 		VideoPath:       req.VideoPath,
+		OrganizationId:  req.OrganizationId,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -97,7 +99,12 @@ func (h *MeetingHandler) ServeMeetingAudio(c *gin.Context) {
 }
 
 func (h *MeetingHandler) ListMeetings(c *gin.Context) {
-	meetings, err := h.svc.ListMeetings(c.Request.Context())
+	OrganizationID, err := getOrganizationID(c)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	meetings, err := h.svc.ListMeetings(c.Request.Context(), OrganizationID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

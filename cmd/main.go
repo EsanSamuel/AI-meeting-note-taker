@@ -8,6 +8,7 @@ import (
 
 	"example.com/internal/config"
 	"example.com/internal/db"
+	"example.com/internal/db/sqlc"
 	"example.com/internal/handlers"
 	"example.com/internal/llama"
 	"example.com/internal/repository"
@@ -75,7 +76,7 @@ func main() {
 		return
 	}
 
-	if err := router.New(authHandler, recordingHandler, meetingHandler, transcriptHandler).Run(serverAddr); err != nil {
+	if err := router.New(sqlc.New(db), authHandler, recordingHandler, meetingHandler, transcriptHandler).Run(serverAddr); err != nil {
 		panic(err)
 	}
 }

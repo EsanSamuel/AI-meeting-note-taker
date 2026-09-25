@@ -14,6 +14,7 @@ type Meeting struct {
 	ID              uuid.UUID `json:"id"`
 	Title           string    `json:"title"`
 	Summary         string    `json:"summary"`
+	OrganizationId  uuid.UUID `json:"organization_id"`
 	StartedAt       time.Time `json:"started_at"`
 	EndedAt         time.Time `json:"ended_at"`
 	DurationSeconds float64   `json:"duration_seconds"`
@@ -45,7 +46,7 @@ type MeetingRepository interface {
 	// Meetings
 	CreateMeeting(ctx context.Context, m Meeting) (Meeting, error)
 	GetMeeting(ctx context.Context, id uuid.UUID) (Meeting, error)
-	ListMeetings(ctx context.Context) ([]Meeting, error)
+	ListMeetings(ctx context.Context, OrganizationID uuid.UUID) ([]Meeting, error)
 	UpdateMeeting(ctx context.Context, m Meeting) (Meeting, error)
 	DeleteMeeting(ctx context.Context, id uuid.UUID) error
 	AddSummary(ctx context.Context, id uuid.UUID, summary string) error
@@ -91,6 +92,7 @@ func (r *meetingRepository) CreateMeeting(ctx context.Context, m Meeting) (Meeti
 		DurationSeconds: pgtype.Float8{Float64: m.DurationSeconds, Valid: true},
 		AudioPath:       pgtype.Text{String: m.AudioPath, Valid: m.AudioPath != ""},
 		VideoPath:       pgtype.Text{String: m.VideoPath, Valid: m.VideoPath != ""},
+		OrganizationID:  pgtype.UUID{Bytes: m.OrganizationId, Valid: true},
 	})
 	if err != nil {
 		return Meeting{}, err
@@ -106,8 +108,8 @@ func (r *meetingRepository) GetMeeting(ctx context.Context, id uuid.UUID) (Meeti
 	return meetingFromRow(row), nil
 }
 
-func (r *meetingRepository) ListMeetings(ctx context.Context) ([]Meeting, error) {
-	rows, err := r.q.ListMeetings(ctx)
+func (r *meetingRepository) ListMeetings(ctx context.Context, OrganizationID uuid.UUID) ([]Meeting, error) {
+	rows, err := r.q.ListMeetings(ctx, pgtype.UUID{Bytes: OrganizationID, Valid: true})
 	if err != nil {
 		return nil, err
 	}

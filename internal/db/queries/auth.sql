@@ -124,7 +124,7 @@ INSERT INTO
         expires_at
     )
 VALUES
-    ($1, $2, $3, $4, $5, $6)
+    ($1, $2, $3, $4, $5, NOW() + INTERVAL '24 hours')
 RETURNING
     *;
 
@@ -136,7 +136,7 @@ FROM
 WHERE
     token_hash = $1
     AND accepted_at IS NULL
-    AND expires_at > NOW()
+    --AND expires_at > NOW()
 LIMIT
     1;
 

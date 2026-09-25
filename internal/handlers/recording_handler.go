@@ -63,6 +63,12 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 		return
 	}
 	startedAt := time.Now()
+
+	OrganizationID, err := getOrganizationID(c)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
 	meeting, err := handler.meetings.CreateMeeting(c.Request.Context(), repository.Meeting{
 		ID:              meetingID,
 		Title:           recording.Filename,
@@ -70,6 +76,7 @@ func (handler *RecordingHandler) Create(c *gin.Context) {
 		EndedAt:         startedAt.Add(audio.Duration),
 		DurationSeconds: audio.Duration.Seconds(),
 		AudioPath:       audio.Path,
+		OrganizationId:  OrganizationID,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("creating meeting: %v", err)})

@@ -10,7 +10,9 @@ export function getMeetingAudioUrl(meetingId) {
 
 export async function request(path, options = {}) {
     const baseUrl = getApiBaseUrl().replace(/\/$/, '');
-    const response = await fetch(`${baseUrl}${path}`, options);
+    // credentials: 'include' is required so the session cookie set by
+    // /auth/login is sent back on every subsequent request.
+    const response = await fetch(`${baseUrl}${path}`, { credentials: 'include', ...options });
     if (!response.ok) {
         let message = `Request failed: ${response.status}`;
         try {
@@ -30,6 +32,18 @@ function jsonRequest(method, body) {
 
 export const api = {
     health: () => request('/health'),
+    auth: {
+        setup: (payload) => request('/api/v1/auth/setup', jsonRequest('POST', payload)),
+        login: (email, password) => request('/api/v1/auth/login', jsonRequest('POST', { email, password })),
+        logout: () => request('/api/v1/auth/logout', { method: 'POST' }),
+        me: () => request('/api/v1/auth/me'),
+        inviteMember: (payload) => request('/api/v1/auth/invitations', jsonRequest('POST', payload)),
+        acceptInvitation: (payload) => request('/api/v1/auth/invitations/accept', jsonRequest('POST', payload)),
+        getUser: (id) => request(`/api/v1/auth/users/${id}`),
+        updateUser: (id, payload) => request(`/api/v1/auth/users/${id}`, jsonRequest('PUT', payload)),
+        updateUserRole: (id, role) => request(`/api/v1/auth/users/${id}/role`, jsonRequest('PATCH', { role })),
+        listMembers: () => request('/api/v1/auth/organization/members'),
+    },
     recordings: {
         upload: (file) => {
             const form = new FormData();

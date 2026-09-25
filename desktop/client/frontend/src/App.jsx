@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import { api, getApiBaseUrl, getMeetingAudioUrl } from './services/api';
+import { AuthProvider, useAuth } from './AuthContext';
+import Login from './Login';
 
 const navItems = [
     { id: 'overview', label: 'Overview', glyph: '⌂' },
@@ -116,7 +118,25 @@ function SummaryContent({ summary }) {
 
 // -----------------------------------------------------------------------------
 
-function App() {
+// Top-level export: gate the whole app behind a session before anything
+// that talks to protected routes gets a chance to render.
+export default function App() {
+    return (
+        <AuthProvider>
+            <AuthGate />
+        </AuthProvider>
+    );
+}
+
+function AuthGate() {
+    const { status } = useAuth();
+    if (status === 'loading') return <div className="auth-loading">Loading…</div>;
+    if (status === 'unauthenticated') return <Login />;
+    return <AppShell />;
+}
+
+function AppShell() {
+    const { user, logout } = useAuth();
     const [view, setView] = useState('overview');
     const [meetings, setMeetings] = useState([]);
     const [selectedId, setSelectedId] = useState(null);
@@ -535,13 +555,13 @@ function App() {
                 <div className="brand"><span className="brand-mark">A</span><span>afterword</span></div>
                 <div className="workspace-label">PERSONAL WORKSPACE</div>
                 <nav>{navItems.map((item) => <button className={`nav-item ${view === item.id || (view === 'detail' && item.id === 'meetings') ? 'active' : ''}`} key={item.id} onClick={() => setView(item.id)}><span className="nav-glyph">{item.glyph}</span>{item.label}</button>)}</nav>
-                <div className="sidebar-bottom"><div className="status-line"><span className={`status-dot ${apiOnline ? 'online' : ''}`}></span>{apiOnline ? 'Service connected' : 'Backend unavailable'}</div><div className="profile"><span>{workspaceName ? workspaceName.slice(0, 2).toUpperCase() : 'LW'}</span><div><strong>{workspaceName || 'Local workspace'}</strong><small>{workspaceName ? 'Local profile' : 'No account required'}</small></div><b>...</b></div></div>
+                <div className="sidebar-bottom"><div className="status-line"><span className={`status-dot ${apiOnline ? 'online' : ''}`}></span>{apiOnline ? 'Service connected' : 'Backend unavailable'}</div><div className="profile"><span>{(user?.name || workspaceName) ? (user?.name || workspaceName).slice(0, 2).toUpperCase() : 'LW'}</span><div><strong>{user?.name || workspaceName || 'Local workspace'}</strong><small>{user?.email || (workspaceName ? 'Local profile' : 'No account required')}</small></div><button className="logout-button" onClick={logout}>LOG OUT</button></div></div>
             </aside>
             <main className="main-content">
                 <header className="topbar"><div className="breadcrumbs">Local workspace <span>/</span> {view === 'detail' ? selectedMeeting?.title : view === 'overview' ? 'Overview' : view === 'actions' ? 'Action items' : view === 'settings' ? 'Settings' : 'Meetings'}</div><div className="topbar-actions"><button className="icon-button" aria-label="Search">⌕</button><button className="keyboard-hint">Ctrl K</button></div></header>
                 {notice && <div className="notice">{notice}<button onClick={() => setNotice('')}>Dismiss</button></div>}
                 <div className="page-wrap">
-                    {view === 'overview' && <Overview meetings={meetings} openActions={openActions} onOpenMeeting={openMeeting} onUpload={() => fileInput.current?.click()} onRecord={toggleRecording} recording={recording} recordingSeconds={recordingSeconds} workspaceName={workspaceName} />}
+                    {view === 'overview' && <Overview meetings={meetings} openActions={openActions} onOpenMeeting={openMeeting} onUpload={() => fileInput.current?.click()} onRecord={toggleRecording} recording={recording} recordingSeconds={recordingSeconds} workspaceName={user?.name || workspaceName} />}
                     {view === 'meetings' && <MeetingLibrary meetings={filteredMeetings} query={query} setQuery={setQuery} onOpenMeeting={openMeeting} onUpload={() => fileInput.current?.click()} onRecord={toggleRecording} recording={recording} recordingSeconds={recordingSeconds} onRefresh={loadMeetingsFromDatabase} />}
                     {view === 'actions' && <ActionView items={actionItems} onToggle={toggleAction} onOpenMeeting={openMeeting} />}
                     {view === 'settings' && <Settings apiBaseUrl={apiBaseUrl} apiOnline={apiOnline} workspaceName={workspaceName} onSaveApiBaseUrl={saveApiBaseUrl} onSaveWorkspaceName={saveWorkspaceName} audioDevices={audioDevices} microphoneDeviceId={microphoneDeviceId} onSaveMicrophoneDevice={saveMicrophoneDevice} />}
@@ -687,6 +707,99 @@ function MeetingDetail({ meeting, onBack, onToggle, editingTitle, titleDraft, on
     </>;
 }
 
+function OrganizationMembers() {
+    const { user } = useAuth();
+    const [members, setMembers] = useState([]);
+    const [inviteName, setInviteName] = useState('');
+    const [inviteEmail, setInviteEmail] = useState('');
+    const [inviteRole, setInviteRole] = useState('member');
+    const [notice, setNotice] = useState('');
+
+    async function loadMembers() {
+        try {
+            const { users } = await api.auth.listMembers();
+            setMembers(users || []);
+        } catch (error) {
+            setNotice(error instanceof Error ? error.message : 'Could not load organization members.');
+        }
+    }
+
+    useEffect(() => { loadMembers(); }, []);
+
+    async function sendInvite(event) {
+        event.preventDefault();
+        try {
+            await api.auth.inviteMember({ email: inviteEmail, name: inviteName, role: inviteRole });
+            setNotice(`Invitation sent to ${inviteEmail}.`);
+            setInviteEmail('');
+            setInviteName('');
+        } catch (error) {
+            setNotice(error instanceof Error ? error.message : 'Could not send invitation.');
+        }
+    }
+
+    async function changeRole(memberId, role) {
+        const previous = members;
+        setMembers((current) => current.map((m) => m.id === memberId ? { ...m, role } : m));
+        try {
+            await api.auth.updateUserRole(memberId, role);
+        } catch {
+            setMembers(previous);
+            setNotice('Could not update role.');
+        }
+    }
+
+    async function toggleActive(member) {
+        const previous = members;
+        setMembers((current) => current.map((m) => m.id === member.id ? { ...m, is_active: !m.is_active } : m));
+        try {
+            await api.auth.updateUser(member.id, { name: member.name, is_active: !member.is_active });
+        } catch {
+            setMembers(previous);
+            setNotice('Could not update member.');
+        }
+    }
+
+    return <section className="panel settings-panel members-panel">
+        <div className="eyebrow">ORGANIZATION</div>
+        <h3>Team members</h3>
+        <p className="settings-copy">Invite teammates to this workspace and manage their access.</p>
+        {notice && <p className="settings-copy">{notice}</p>}
+        <form className="invite-form" onSubmit={sendInvite}>
+            <input className="settings-input" placeholder="Name" value={inviteName} onChange={(e) => setInviteName(e.target.value)} required />
+            <input className="settings-input" type="email" placeholder="Email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} required />
+            <select className="settings-input" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
+                <option value="viewer">Viewer</option>
+                <option value="member">Member</option>
+                <option value="admin">Admin</option>
+            </select>
+            <button className="primary-button" type="submit">Invite</button>
+        </form>
+        <div className="member-list">
+            {members.map((member) => {
+                const isSelf = member.id === user?.id;
+                const isOwner = member.role === 'owner';
+                return (
+                    <div className="member-row" key={member.id}>
+                        <div><strong>{member.name}</strong><small>{member.email}</small></div>
+                        {isOwner
+                            ? <span className="owner-label">Owner</span>
+                            : <select className="settings-input" value={member.role} onChange={(e) => changeRole(member.id, e.target.value)} disabled={isSelf}>
+                                <option value="viewer">Viewer</option>
+                                <option value="member">Member</option>
+                                <option value="admin">Admin</option>
+                            </select>}
+                        <button className="refresh-button" onClick={() => toggleActive(member)} disabled={isSelf || isOwner}>
+                            {member.is_active ? 'Deactivate' : 'Activate'}
+                        </button>
+                    </div>
+                );
+            })}
+            {!members.length && <div className="empty-state">No other members yet.</div>}
+        </div>
+    </section>;
+}
+
 function Settings({ apiBaseUrl, apiOnline, workspaceName, onSaveApiBaseUrl, onSaveWorkspaceName, audioDevices, microphoneDeviceId, onSaveMicrophoneDevice }) {
     const [draftUrl, setDraftUrl] = useState(apiBaseUrl);
     const [draftName, setDraftName] = useState(workspaceName);
@@ -719,8 +832,7 @@ function Settings({ apiBaseUrl, apiOnline, workspaceName, onSaveApiBaseUrl, onSa
                 </select>
             </section>
             <section className="panel settings-panel"><div className="eyebrow">PRIVACY</div><h3>Local-first processing</h3><p className="settings-copy">Audio is sent only to the backend URL above. This client does not add cloud AI services or store meeting data in browser storage.</p><div className="capability-list"><div><span className="status-dot online"></span><strong>Microphone recording</strong><small>Captured in the desktop webview</small></div><div><span className="status-dot online"></span><strong>Transcription and diarization</strong><small>Provided by the Go backend</small></div><div><span className="status-dot"></span><strong>Semantic search and Q&amp;A</strong><small>Backend routes are not currently exposed</small></div></div></section>
+            <OrganizationMembers />
         </div>
     </>;
 }
-
-export default App

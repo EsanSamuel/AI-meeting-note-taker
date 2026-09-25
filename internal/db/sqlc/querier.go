@@ -47,7 +47,7 @@ type Querier interface {
 	ListIncompleteActionItems(ctx context.Context, meetingID pgtype.UUID) ([]MeetingActionItem, error)
 	ListMeetingActionItems(ctx context.Context, meetingID pgtype.UUID) ([]MeetingActionItem, error)
 	ListMeetingDecisions(ctx context.Context, meetingID pgtype.UUID) ([]MeetingDecision, error)
-	ListMeetings(ctx context.Context) ([]Meeting, error)
+	ListMeetings(ctx context.Context, organizationID pgtype.UUID) ([]Meeting, error)
 	ListMeetingsWithDecisionsAndActionItems(ctx context.Context) ([]ListMeetingsWithDecisionsAndActionItemsRow, error)
 	ListOrganizationMembers(ctx context.Context, organizationID pgtype.UUID) ([]ListOrganizationMembersRow, error)
 	ListTranscriptSegments(ctx context.Context, meetingID pgtype.UUID) ([]TranscriptSegment, error)

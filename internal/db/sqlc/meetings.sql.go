@@ -16,6 +16,7 @@ INSERT INTO
     meetings (
         id,
         title,
+        organization_id,
         started_at,
         ended_at,
         duration_seconds,
@@ -23,7 +24,7 @@ INSERT INTO
         video_path
     )
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7)
+    ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING
     id, title, started_at, ended_at, duration_seconds, audio_path, video_path, created_at, updated_at, summary, organization_id
 `
@@ -31,6 +32,7 @@ RETURNING
 type CreateMeetingParams struct {
 	ID              pgtype.UUID        `json:"id"`
 	Title           string             `json:"title"`
+	OrganizationID  pgtype.UUID        `json:"organization_id"`
 	StartedAt       pgtype.Timestamptz `json:"started_at"`
 	EndedAt         pgtype.Timestamptz `json:"ended_at"`
 	DurationSeconds pgtype.Float8      `json:"duration_seconds"`
@@ -43,6 +45,7 @@ func (q *Queries) CreateMeeting(ctx context.Context, arg CreateMeetingParams) (M
 	row := q.db.QueryRow(ctx, createMeeting,
 		arg.ID,
 		arg.Title,
+		arg.OrganizationID,
 		arg.StartedAt,
 		arg.EndedAt,
 		arg.DurationSeconds,
@@ -386,12 +389,14 @@ SELECT
     id, title, started_at, ended_at, duration_seconds, audio_path, video_path, created_at, updated_at, summary, organization_id
 FROM
     meetings
+WHERE
+    organization_id = $1
 ORDER BY
     created_at DESC
 `
 
-func (q *Queries) ListMeetings(ctx context.Context) ([]Meeting, error) {
-	rows, err := q.db.Query(ctx, listMeetings)
+func (q *Queries) ListMeetings(ctx context.Context, organizationID pgtype.UUID) ([]Meeting, error) {
+	rows, err := q.db.Query(ctx, listMeetings, organizationID)
 	if err != nil {
 		return nil, err
 	}
