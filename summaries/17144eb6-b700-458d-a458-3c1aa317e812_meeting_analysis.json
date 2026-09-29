@@ -1,22 +1,22 @@
 [
   {
-    "summary": "SPEAKER_03 opened the morning daily meeting, stating the goal to spend 20 minutes reviewing everyone's tasks to clarify team priorities, and asked Caitlin to start.",
-    "decisions": [],
-    "action_items": [
-      {
-        "task": "Start running through her tasks and priorities.",
-        "assignee": "Caitlin",
-        "timestamp": 9.64
-      }
-    ]
-  },
-  {
-    "summary": "SPEAKER_01 shared their priorities for today and tomorrow, which include website updates and marketing strategy setting, and noted a sales meeting scheduled for tomorrow.",
+    "summary": "SPEAKER_03 welcomed the team to the daily meeting and proposed spending 20 minutes reviewing everyone's tasks and priorities for alignment, starting with Caitlin.",
     "decisions": [],
     "action_items": []
   },
   {
-    "summary": "SPEAKER_00 shares plans to focus on monthly financial reporting and requests that anyone with outstanding expenses submit them.",
+    "summary": "SPEAKER_01 shared their priorities for today and tomorrow, focusing on website updates, marketing strategy setting, and an upcoming sales meeting.",
+    "decisions": [],
+    "action_items": [
+      {
+        "task": "Complete website updates and marketing strategy setting",
+        "assignee": "SPEAKER_01",
+        "timestamp": 14.68
+      }
+    ]
+  },
+  {
+    "summary": "SPEAKER_00 announced they will be focusing on monthly financial reporting and requested that team members submit any remaining outstanding expenses.",
     "decisions": [],
     "action_items": [
       {
@@ -27,38 +27,38 @@
     ]
   },
   {
-    "summary": "SPEAKER_00 requests that certain items be submitted by lunchtime and asks for an update. SPEAKER_02 explains that they need to focus on completing a large backlog of editing work over the next couple of days due to being on holiday the previous week.",
+    "summary": "SPEAKER_00 requests that certain items be delivered to them by lunchtime at the latest. SPEAKER_02 shares that they have a backlog of editing to complete over the next couple of days after being on holiday.",
     "decisions": [],
     "action_items": [
       {
-        "task": "Get the requested items to SPEAKER_00 by lunchtime at the latest",
+        "task": "Send items to SPEAKER_00 by lunchtime at the latest.",
         "assignee": "Aaron",
         "timestamp": 38.26
       },
       {
-        "task": "Complete a big backlog of editing",
+        "task": "Complete a big backlog of editing.",
         "assignee": "SPEAKER_02",
         "timestamp": 43.94
       }
     ]
   },
   {
-    "summary": "SPEAKER_02 offered assistance if needed. SPEAKER_03 mentioned looking forward to discussing a holiday and stated they would be setting the annual meeting agenda today.",
+    "summary": "SPEAKER_02 offered assistance to the team, and SPEAKER_03 mentioned looking forward to discussing a holiday and planned to set the agenda for the annual meeting today.",
     "decisions": [],
     "action_items": [
       {
-        "task": "Set the annual meeting agenda today",
+        "task": "Set the agenda for the annual meeting.",
         "assignee": "SPEAKER_03",
         "timestamp": 61.68
       }
     ]
   },
   {
-    "summary": "SPEAKER_03 concluded the meeting by stating they will send a draft agenda item to everyone later in the afternoon.",
+    "summary": "SPEAKER_03 announced they will be sending a draft of an agenda item to everyone in the late afternoon, before wishing everyone a productive day and saying goodbye.",
     "decisions": [],
     "action_items": [
       {
-        "task": "Send a draft agenda item to everyone in the late afternoon.",
+        "task": "Send a draft of the agenda item to everyone",
         "assignee": "SPEAKER_03",
         "timestamp": 65.32
       }

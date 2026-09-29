@@ -10,9 +10,10 @@ export function AuthProvider({ children }) {
 
     async function refreshSession() {
         try {
-            const { user } = await api.auth.me();
-            setUser(user);
+            const { user, role } = await api.auth.me();
+            setUser({ ...user, role });
             setStatus('authenticated');
+            console.log("User role:", role)
         } catch {
             setUser(null);
             setStatus('unauthenticated');
@@ -22,9 +23,10 @@ export function AuthProvider({ children }) {
     useEffect(() => { refreshSession(); }, []);
 
     async function login(email, password) {
-        const { user } = await api.auth.login(email, password);
-        setUser(user);
-        setStatus('authenticated');
+        await api.auth.login(email, password);
+        // Re-derive user + role from /me rather than trusting the login
+        // response shape, so both code paths agree on what "user" contains.
+        await refreshSession();
     }
 
     async function setupOrganization(payload) {

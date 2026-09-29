@@ -552,7 +552,7 @@ function AppShell() {
     return (
         <div className="app-shell">
             <aside className="sidebar">
-                <div className="brand"><span className="brand-mark">A</span><span>afterword</span></div>
+                <div className="brand"><span className="brand-mark">T</span><span>Techyz</span></div>
                 <div className="workspace-label">PERSONAL WORKSPACE</div>
                 <nav>{navItems.map((item) => <button className={`nav-item ${view === item.id || (view === 'detail' && item.id === 'meetings') ? 'active' : ''}`} key={item.id} onClick={() => setView(item.id)}><span className="nav-glyph">{item.glyph}</span>{item.label}</button>)}</nav>
                 <div className="sidebar-bottom"><div className="status-line"><span className={`status-dot ${apiOnline ? 'online' : ''}`}></span>{apiOnline ? 'Service connected' : 'Backend unavailable'}</div><div className="profile"><span>{(user?.name || workspaceName) ? (user?.name || workspaceName).slice(0, 2).toUpperCase() : 'LW'}</span><div><strong>{user?.name || workspaceName || 'Local workspace'}</strong><small>{user?.email || (workspaceName ? 'Local profile' : 'No account required')}</small></div><button className="logout-button" onClick={logout}>LOG OUT</button></div></div>

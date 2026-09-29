@@ -59,7 +59,7 @@ export default function Login() {
     return (
         <div className="auth-shell">
             <div className="auth-card">
-                <div className="brand"><span className="brand-mark">A</span><span>afterword</span></div>
+                <div className="brand"><span className="brand-mark">T</span><span>Techyz</span></div>
                 {mode !== 'accept' && (
                     <div className="auth-tabs">
                         <button type="button" className={mode === 'login' ? 'active' : ''} onClick={() => setMode('login')}>Log in</button>

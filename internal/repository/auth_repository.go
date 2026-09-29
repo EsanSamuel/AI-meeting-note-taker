@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -19,12 +20,13 @@ type Organization struct {
 }
 
 type User struct {
-	ID           uuid.UUID   `json:"id"`
-	Email        string      `json:"email"`
-	Name         string      `json:"name"`
-	IsActive     bool        `json:"is_active"`
-	PasswordHash pgtype.Text `json:"-"`
-	CreatedAt    time.Time   `json:"created_at"`
+	ID           uuid.UUID     `json:"id"`
+	Email        string        `json:"email"`
+	Name         string        `json:"name"`
+	IsActive     bool          `json:"is_active"`
+	Role         sqlc.UserRole `json:"role"`
+	PasswordHash pgtype.Text   `json:"-"`
+	CreatedAt    time.Time     `json:"created_at"`
 }
 
 type OrganizationMember struct {
@@ -102,6 +104,7 @@ type UpdateUserRoleParams struct {
 }
 
 type AuthRepository interface {
+	WithTx(tx pgx.Tx) AuthRepository
 	CreateOrganization(ctx context.Context, params CreateOrganizationParams) (Organization, error)
 	CreateUser(ctx context.Context, params CreateUserParams) (User, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
@@ -122,11 +125,20 @@ type AuthRepository interface {
 
 type authRepository struct {
 	queries *sqlc.Queries
+	pool    *pgxpool.Pool
 }
 
 func NewAuthRepository(pool *pgxpool.Pool) AuthRepository {
 	return &authRepository{
 		queries: sqlc.New(pool),
+		pool:    pool,
+	}
+}
+
+func (r *authRepository) WithTx(tx pgx.Tx) AuthRepository {
+	return &authRepository{
+		queries: r.queries.WithTx(tx),
+		pool:    r.pool,
 	}
 }
 
@@ -282,6 +294,7 @@ func (r *authRepository) ListOrganizationMembers(ctx context.Context, organizati
 			Email:     row.Email,
 			Name:      row.Name,
 			IsActive:  row.IsActive,
+			Role:      row.Role,
 			CreatedAt: row.CreatedAt.Time,
 		})
 	}

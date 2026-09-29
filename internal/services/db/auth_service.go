@@ -3,12 +3,13 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"example.com/internal/auth"
 	"example.com/internal/repository"
@@ -28,12 +29,14 @@ type AuthService interface {
 }
 
 type authService struct {
+	pool *pgxpool.Pool
 	repo repository.AuthRepository
 }
 
-func NewAuthService(repo repository.AuthRepository) AuthService {
+func NewAuthService(pool *pgxpool.Pool, repo repository.AuthRepository) AuthService {
 	return &authService{
 		repo: repo,
+		pool: pool,
 	}
 }
 
@@ -57,7 +60,16 @@ func (s *authService) Setup(ctx context.Context, organizationName, domain, name,
 		return repository.User{}, err
 	}
 
-	organization, err := s.repo.CreateOrganization(ctx, repository.CreateOrganizationParams{
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return repository.User{}, err
+	}
+
+	defer tx.Rollback(ctx)
+
+	authRepo := s.repo.WithTx(tx)
+
+	organization, err := authRepo.CreateOrganization(ctx, repository.CreateOrganizationParams{
 		Name: organizationName,
 		Domain: pgtype.Text{
 			String: domain,
@@ -68,7 +80,7 @@ func (s *authService) Setup(ctx context.Context, organizationName, domain, name,
 		return repository.User{}, err
 	}
 
-	user, err := s.repo.CreateUser(ctx, repository.CreateUserParams{
+	user, err := authRepo.CreateUser(ctx, repository.CreateUserParams{
 		Email: email,
 		Name:  name,
 		PasswordHash: pgtype.Text{
@@ -80,8 +92,12 @@ func (s *authService) Setup(ctx context.Context, organizationName, domain, name,
 		return repository.User{}, err
 	}
 
-	_, err = s.repo.AddOrganizationMember(ctx, organization.ID, user.ID, "owner")
+	_, err = authRepo.AddOrganizationMember(ctx, organization.ID, user.ID, "owner")
 	if err != nil {
+		return repository.User{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
 		return repository.User{}, err
 	}
 
@@ -161,7 +177,7 @@ func (s *authService) CreateInvitation(ctx context.Context, organizationID uuid.
 		Email:          email,
 		Name:           name,
 		Role:           role,
-		TokenHash:      auth.HashToken(token),
+		TokenHash:      token,
 	})
 	if err != nil {
 		return "", err
@@ -175,7 +191,9 @@ func (s *authService) AcceptInvitation(ctx context.Context, token, name, passwor
 		return repository.User{}, errors.New("invitation token is required")
 	}
 
-	invitation, err := s.repo.GetInvitationByTokenHash(ctx, auth.HashToken(token))
+	fmt.Println("Token:", token)
+	fmt.Println("HashToken:", auth.HashToken(token))
+	invitation, err := s.repo.GetInvitationByTokenHash(ctx, token)
 	if err != nil {
 		fmt.Println(err)
 		return repository.User{}, errors.New("invalid or expired invitation")

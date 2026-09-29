@@ -58,7 +58,7 @@ func main() {
 	transcribeService := services.NewTranscribeService(llamaService, vectorRepository, transcriptRepository)
 	meetingService := dbservices.NewMeetingService(meetingRepository)
 	transcriptService := dbservices.NewTranscriptService(transcriptRepository)
-	authService := dbservices.NewAuthService(authRepository)
+	authService := dbservices.NewAuthService(db, authRepository)
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(authService)
